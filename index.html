@@ -5,10 +5,12 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Hypothesis Testing App</title>
 
-  <!-- Libraries -->
+  <!-- LIBRARIES -->
   <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/simple-statistics@7.8.3/dist/simple-statistics.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/jstat@latest/dist/jstat.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-annotation@2"></script>
 
   <style>
     body {font-family: Arial, sans-serif; margin:20px; background:#f4f6f9;}
@@ -20,6 +22,8 @@
     button:hover {background:#2980b9;}
     .btn-rationale {background:#27ae60; font-size:14px; width:auto; padding:8px 16px; margin:10px 0;}
     .btn-rationale:hover {background:#1e8449;}
+    .btn-plot {background:#9b59b6; font-size:14px; width:auto; padding:8px 16px; margin:10px 5px 10px 0;}
+    .btn-plot:hover {background:#8e44ad;}
     table {width:100%; border-collapse:collapse; margin:15px 0;}
     th, td {border:1px solid #ddd; padding:8px; text-align:left;}
     th {background:#f2f2f2;}
@@ -36,6 +40,8 @@
     .modal-content {background:white; padding:25px; border-radius:10px; max-width:600px; width:90%; max-height:80vh; overflow-y:auto; box-shadow:0 4px 20px rgba(0,0,0,0.2);}
     .close-modal {float:right; font-size:24px; cursor:pointer; color:#aaa;}
     .close-modal:hover {color:#000;}
+    #plotContainer {margin-top:20px; height:auto; position:relative;}
+    #plotContainer canvas {margin-bottom:20px;}
   </style>
 </head>
 <body>
@@ -45,7 +51,6 @@
     <div id="inputSection" class="input-section">
       <label><strong>Upload CSV:</strong></label>
       <input type="file" id="csvFile" accept=".csv" />
-
       <label><strong>Or Paste CSV Here:</strong></label>
       <textarea id="csvText" rows="8" placeholder="id,score,group
 1,85,A
@@ -57,7 +62,6 @@
 7,88,A
 8,82,B
 9,96,C"></textarea>
-
       <button onclick="loadData()">Load Data</button>
     </div>
 
@@ -66,23 +70,20 @@
     <div id="controls" style="display:none;">
       <label><strong>Variable 1:</strong></label>
       <select id="var1"></select>
-
       <label><strong>Variable 2 (optional):</strong></label>
       <select id="var2"><option value="">None</option></select>
-
       <button onclick="runTest()">Run Test</button>
     </div>
 
     <div id="results"></div>
+    <div id="plotContainer" style="display:none;"></div>
   </div>
 
   <!-- RATIONALE MODAL -->
   <div id="rationaleModal" class="rationale-modal">
     <div class="modal-content">
-      <span class="close-modal" onclick="closeRationale()">×</span>
-      <div id="rationaleContent">
-        <p>Run a test to see its explanation.</p>
-      </div>
+      <span class="close-modal" onclick="closeRationale()">x</span>
+      <div id="rationaleContent"><p>Run a test to see its explanation.</p></div>
     </div>
   </div>
 
@@ -91,26 +92,36 @@
     let headers = [];
     let lastTest = null;
 
+    /* ---------------------------------------------------------- */
+    /* DATA LOADING ------------------------------------------------ */
+    /* ---------------------------------------------------------- */
     function loadData() {
       const file = document.getElementById('csvFile').files[0];
       const text = document.getElementById('csvText').value.trim();
+
       const parse = r => {
         if (r.errors.length) return alert('CSV error: ' + r.errors[0].message);
         parseCSV(r.data);
       };
-      if (file) Papa.parse(file, { complete: parse });
-      else if (text) Papa.parse(text, { complete: parse });
-      else return alert('Upload a file or paste CSV.');
+
+      if (file) {
+        Papa.parse(file, { complete: parse, skipEmptyLines: true, trimHeaders: true });
+      } else if (text) {
+        Papa.parse(text, { complete: parse, skipEmptyLines: true, trimHeaders: true });
+      } else {
+        return alert('Upload a file or paste CSV.');
+      }
     }
 
     function parseCSV(rows) {
-      if (rows.length < 2) return alert('Need header + at least one row.');
+      rows = rows.filter(row => row.some(cell => cell !== '' && cell !== null));
+      if (rows.length < 1) return alert('No data rows found.');
       headers = rows[0];
       data = rows.slice(1).map(r => {
         const o = {};
         headers.forEach((h, i) => {
-          const val = r[i];
-          o[h] = (val === '' || val === null || val === 'NA' || val === 'null') ? null : val;
+          const val = (r[i] ?? '').trim();
+          o[h] = (val === '' || val === 'NA' || val === 'null') ? null : val;
         });
         return o;
       });
@@ -120,6 +131,9 @@
       setupControls();
     }
 
+    /* ---------------------------------------------------------- */
+    /* TABLE DISPLAY ------------------------------------------------ */
+    /* ---------------------------------------------------------- */
     function displayTable() {
       let html = `
         <div class="table-header">
@@ -153,6 +167,9 @@
       }
     }
 
+    /* ---------------------------------------------------------- */
+    /* CONTROLS --------------------------------------------------- */
+    /* ---------------------------------------------------------- */
     function setupControls() {
       const s1 = document.getElementById('var1');
       const s2 = document.getElementById('var2');
@@ -187,22 +204,24 @@
       return new Set(vals).size <= 10;
     }
 
+    /* ---------------------------------------------------------- */
+    /* MAIN TEST LOGIC ------------------------------------------- */
+    /* ---------------------------------------------------------- */
     function runTest() {
       const v1 = document.getElementById('var1').value;
       const v2 = document.getElementById('var2').value;
       const res = document.getElementById('results');
       res.innerHTML = '';
-
       const selected = v2 ? [v1, v2] : [v1];
       const completeData = getCompleteCases(selected);
       const nComplete = completeData.length;
       const nOriginal = data.length;
-
       warnMissing(nOriginal, nComplete);
 
       if (nComplete === 0) {
         res.innerHTML = '<p class="error">No complete cases. Cannot run test.</p>';
         lastTest = null;
+        hidePlot();
         return;
       }
 
@@ -216,6 +235,7 @@
         } else {
           res.innerHTML = '<p class="error">Variable type unclear.</p>';
           lastTest = null;
+          hidePlot();
         }
         return;
       }
@@ -236,10 +256,13 @@
       } else {
         res.innerHTML = '<p class="error">Invalid combination.</p>';
         lastTest = null;
+        hidePlot();
       }
     }
 
-    // SHOW RATIONALE BUTTON AFTER RESULTS
+    /* ---------------------------------------------------------- */
+    /* BUTTON HELPERS -------------------------------------------- */
+    /* ---------------------------------------------------------- */
     function showRationaleButton() {
       if (!lastTest) return;
       const btn = document.createElement('button');
@@ -249,6 +272,172 @@
       document.getElementById('results').appendChild(btn);
     }
 
+    function showPlotButton() {
+      if (!lastTest) return;
+      const btn = document.createElement('button');
+      btn.textContent = 'Show Plot';
+      btn.className = 'btn-plot';
+      btn.onclick = drawPlot;
+      document.getElementById('results').appendChild(btn);
+    }
+
+    function hidePlot() {
+      const container = document.getElementById('plotContainer');
+      container.style.display = 'none';
+      container.innerHTML = '';
+    }
+
+    /* ---------------------------------------------------------- */
+    /* PLOTTING -------------------------------------------------- */
+    /* ---------------------------------------------------------- */
+    function drawPlot() {
+      if (!lastTest) return;
+      const container = document.getElementById('plotContainer');
+      container.innerHTML = '';
+      container.style.display = 'block';
+
+      const complete = getCompleteCases(
+        lastTest.type === 'group' ? [lastTest.quant, lastTest.group] :
+        lastTest.type === 'chi-ind' ? [lastTest.col1, lastTest.col2] :
+        [lastTest.col]
+      );
+
+      /* ---------- ONE SAMPLE / QUANTITATIVE SINGLE ---------- */
+      if (lastTest.type === 'one-sample-t' || (lastTest.type === 'gof' && isQuantitative(lastTest.col, complete))) {
+        const values = complete.map(r => parseFloat(r[lastTest.col])).filter(v => !isNaN(v));
+
+        // HISTOGRAM
+        const hist = ss.histogram(values, 10);
+        const labels = hist.map(bin => `${bin.x0.toFixed(1)}–${bin.x1.toFixed(1)}`);
+        const histData = hist.map(bin => bin.count);
+        const histCanvas = document.createElement('canvas');
+        container.appendChild(histCanvas);
+        new Chart(histCanvas.getContext('2d'), {
+          type: 'bar',
+          data: { labels, datasets: [{ label: lastTest.col, data: histData, backgroundColor: 'rgba(54,162,235,0.6)' }] },
+          options: { responsive: true, plugins: { title: { display: true, text: `Histogram of ${lastTest.col}` } } }
+        });
+
+        // BOX-PLOT
+        const sorted = [...values].sort((a,b) => a-b);
+        const q1 = ss.quantile(sorted, 0.25);
+        const q2 = ss.median(sorted);
+        const q3 = ss.quantile(sorted, 0.75);
+        const iqr = q3 - q1;
+        const lowerWhisker = Math.max(sorted[0], q1 - 1.5 * iqr);
+        const upperWhisker = Math.min(sorted[sorted.length-1], q3 + 1.5 * iqr);
+
+        const boxCanvas = document.createElement('canvas');
+        boxCanvas.style.marginTop = '30px';
+        container.appendChild(boxCanvas);
+        new Chart(boxCanvas.getContext('2d'), {
+          type: 'boxplot',
+          data: {
+            labels: [lastTest.col],
+            datasets: [{
+              label: 'Box-plot',
+              data: [{ min: lowerWhisker, q1, median: q2, q3, max: upperWhisker }],
+              backgroundColor: 'rgba(255,159,64,0.5)',
+              borderColor: 'rgba(255,159,64,1)'
+            }]
+          },
+          options: { responsive: true, plugins: { title: { display: true, text: `Box-plot of ${lastTest.col}` } } }
+        });
+
+        return;
+      }
+
+      /* ---------- GOODNESS-OF-FIT (categorical) ---------- */
+      if (lastTest.type === 'gof') {
+        const counts = {};
+        complete.forEach(r => { const v = r[lastTest.col]; counts[v] = (counts[v] || 0) + 1; });
+        const cats = Object.keys(counts).sort();
+        const obs = cats.map(c => counts[c]);
+        const exp = lastTest.exp || cats.map(() => complete.length / cats.length);
+
+        const canvas = document.createElement('canvas');
+        container.appendChild(canvas);
+        new Chart(canvas.getContext('2d'), {
+          type: 'bar',
+          data: {
+            labels: cats,
+            datasets: [
+              { label: 'Observed', data: obs, backgroundColor: 'rgba(255,99,132,0.6)' },
+              { label: 'Expected', data: exp, backgroundColor: 'rgba(75,192,192,0.6)' }
+            ]
+          },
+          options: { responsive: true, plugins: { title: { display: true, text: `Goodness-of-Fit: ${lastTest.col}` } } }
+        });
+        return;
+      }
+
+      /* ---------- CHI-SQUARE INDEPENDENCE ---------- */
+      if (lastTest.type === 'chi-ind') {
+        const table = {};
+        complete.forEach(r => {
+          const a = r[lastTest.col1], b = r[lastTest.col2];
+          if (!table[a]) table[a] = {};
+          table[a][b] = (table[a][b] || 0) + 1;
+        });
+        const rows = Object.keys(table);
+        const cols = new Set();
+        rows.forEach(r => Object.keys(table[r]).forEach(c => cols.add(c)));
+        const colNames = Array.from(cols);
+        const datasets = colNames.map((c, i) => ({
+          label: c,
+          data: rows.map(r => table[r][c] || 0),
+          backgroundColor: `hsl(${i * 360 / colNames.length}, 70%, 60%)`
+        }));
+
+        const canvas = document.createElement('canvas');
+        container.appendChild(canvas);
+        new Chart(canvas.getContext('2d'), {
+          type: 'bar',
+          data: { labels: rows, datasets },
+          options: {
+            responsive: true,
+            plugins: { title: { display: true, text: `${lastTest.col1} vs ${lastTest.col2}` } },
+            scales: { x: { stacked: true }, y: { stacked: true } }
+          }
+        });
+        return;
+      }
+
+      /* ---------- GROUP COMPARISON (t-test / ANOVA) ---------- */
+      if (lastTest.type === 'group') {
+        const groups = {};
+        complete.forEach(r => {
+          const g = r[lastTest.group];
+          const q = parseFloat(r[lastTest.quant]);
+          if (!groups[g]) groups[g] = [];
+          groups[g].push(q);
+        });
+        const labels = Object.keys(groups);
+        const means = labels.map(g => ss.mean(groups[g]));
+
+        const canvas = document.createElement('canvas');
+        container.appendChild(canvas);
+        new Chart(canvas.getContext('2d'), {
+          type: 'bar',
+          data: {
+            labels,
+            datasets: [{ label: 'Mean', data: means, backgroundColor: 'rgba(54,162,235,0.6)' }]
+          },
+          options: {
+            responsive: true,
+            plugins: {
+              title: { display: true, text: `${lastTest.quant} by ${lastTest.group}` }
+              // **NO ANNOTATION → NO ERROR BARS**
+            }
+          }
+        });
+        return;
+      }
+    }
+
+    /* ---------------------------------------------------------- */
+    /* RATIONALE MODAL ------------------------------------------- */
+    /* ---------------------------------------------------------- */
     function openRationale() {
       if (!lastTest) return;
       updateRationale(lastTest);
@@ -259,7 +448,6 @@
       document.getElementById('rationaleModal').style.display = 'none';
     }
 
-    // DYNAMIC RATIONALE CONTENT
     function updateRationale(test) {
       const content = document.getElementById('rationaleContent');
       let html = '<h3>Method Explanation</h3>';
@@ -271,8 +459,7 @@
           <p><strong>H₁:</strong> μ ≠ μ₀</p>
           <div class="formula">t = (x̄ - μ₀) / (s / √n)</div>
           <p>df = n - 1</p>
-          <p><strong>p < 0.05 → Reject H₀</strong>: mean differs from μ₀.</p>
-        `;
+          <p><strong>p < 0.05 → Reject H₀</strong>: mean differs from μ₀.</p>`;
       } else if (test.type === 'group') {
         const groupCount = Object.keys(
           Object.fromEntries(
@@ -285,7 +472,6 @@
             ).filter(([_, n]) => n >= 2)
           )
         ).length;
-
         if (groupCount === 2) {
           html += `
             <h3>Two-Sample t-Test (Welch)</h3>
@@ -293,8 +479,7 @@
             <p><strong>H₁:</strong> μ₁ ≠ μ₂</p>
             <div class="formula">t = (x̄₁ - x̄₂) / √(s₁²/n₁ + s₂²/n₂)</div>
             <p>No equal variance assumed.</p>
-            <p><strong>p < 0.05 → Reject H₀</strong>: groups differ.</p>
-          `;
+            <p><strong>p < 0.05 → Reject H₀</strong>: groups differ.</p>`;
         } else {
           html += `
             <h3>One-Way ANOVA</h3>
@@ -302,8 +487,7 @@
             <p><strong>H₁:</strong> At least one differs</p>
             <div class="formula">F = MST / MSE</div>
             <p>MST = between-group variance<br>MSE = within-group variance</p>
-            <p><strong>p < 0.05 → Reject H₀</strong>: not all means equal.</p>
-          `;
+            <p><strong>p < 0.05 → Reject H₀</strong>: not all means equal.</p>`;
         }
       } else if (test.type === 'gof') {
         html += `
@@ -312,8 +496,7 @@
           <p><strong>H₁:</strong> Does not match</p>
           <div class="formula">χ² = Σ (Oᵢ - Eᵢ)² / Eᵢ</div>
           <p>df = k - 1</p>
-          <p><strong>p < 0.05 → Reject H₀</strong>: poor fit.</p>
-        `;
+          <p><strong>p < 0.05 → Reject H₀</strong>: poor fit.</p>`;
       } else if (test.type === 'chi-ind') {
         html += `
           <h3>Chi-Square Independence</h3>
@@ -322,60 +505,55 @@
           <div class="formula">χ² = Σ (Oᵢⱼ - Eᵢⱼ)² / Eᵢⱼ</div>
           <p>Eᵢⱼ = (Row × Col) / N</p>
           <p>df = (r-1)(c-1)</p>
-          <p><strong>p < 0.05 → Reject H₀</strong>: association exists.</p>
-        `;
+          <p><strong>p < 0.05 → Reject H₀</strong>: association exists.</p>`;
       }
-
       content.innerHTML = html;
     }
 
-    // === TEST FUNCTIONS (add showRationaleButton at end) ===
+    /* ---------------------------------------------------------- */
+    /* TEST IMPLEMENTATIONS -------------------------------------- */
+    /* ---------------------------------------------------------- */
     function chiSquareGOF(col, data, div) {
       const counts = {};
       data.forEach(r => { const v = r[col]; counts[v] = (counts[v] || 0) + 1; });
       const cats = Object.keys(counts).sort();
       const n = data.length;
-
       const def = cats.map(() => (1/cats.length).toFixed(4)).join(',');
       const input = prompt(`Proportions (comma-separated):\n${cats.join(', ')}\nLeave blank for equal.`, def);
       if (input === null) return;
-
       let props = input.trim() ? input.split(',').map(parseFloat) : cats.map(() => 1/cats.length);
       if (props.length !== cats.length || props.some(p => isNaN(p) || p < 0)) return alert('Invalid proportions.');
-
       let sum = props.reduce((a,b) => a+b, 0);
       if (Math.abs(sum - 1) > 1e-6 && !confirm(`Sum = ${sum.toFixed(4)} ≠ 1. Scale?`)) return;
       if (sum !== 1) props = props.map(p => p/sum);
-
       const exp = props.map(p => p * n);
       let chi2 = 0;
       cats.forEach((c,i) => { if (exp[i] > 0) chi2 += Math.pow(counts[c] - exp[i], 2) / exp[i]; });
       const df = cats.length - 1;
       const p = df > 0 ? 1 - jStat.chisquare.cdf(chi2, df) : NaN;
+      lastTest.exp = exp;
 
       let tbl = '<table><tr><th>Category</th><th>Obs</th><th>Exp</th></tr>';
       cats.forEach((c,i) => tbl += `<tr><td>${c}</td><td>${counts[c]}</td><td>${exp[i].toFixed(2)}</td></tr>`);
       tbl += '</table>';
-
       div.innerHTML = `<div class="result">
         <h3>Chi-Square Goodness-of-Fit (n=${n})</h3>${tbl}
         <p><strong>χ² =</strong> ${chi2.toFixed(4)}, df=${df}, p=${isNaN(p) ? 'N/A' : p.toFixed(4)}</p>
         <p class="${p<0.05?'error':'success'}">${p<0.05?'Reject H₀':'Fail to reject H₀'}</p>
       </div>`;
       showRationaleButton();
+      showPlotButton();
     }
 
     function oneSampleTTest(col, data, div) {
       const nums = data.map(r => parseFloat(r[col])).filter(v => !isNaN(v));
       if (nums.length < 2) return div.innerHTML = '<p class="error">Need ≥2 valid numbers.</p>';
-
       const mean = ss.mean(nums);
       const sd = ss.standardDeviation(nums);
       const n = nums.length;
       const mu0 = prompt('Null mean (μ₀):', '0') || 0;
       const t = (mean - mu0) / (sd / Math.sqrt(n));
       const p = 2 * (1 - jStat.studentt.cdf(Math.abs(t), n-1));
-
       div.innerHTML = `<div class="result">
         <h3>One-Sample t-Test (n=${n})</h3>
         <p>Mean = ${mean.toFixed(3)}, SD = ${sd.toFixed(3)}</p>
@@ -384,6 +562,7 @@
         <p class="${p<0.05?'error':'success'}">${p<0.05?'Reject H₀':'Fail to reject H₀'}</p>
       </div>`;
       showRationaleButton();
+      showPlotButton();
     }
 
     function chiSquareIndependence(c1, c2, data, div) {
@@ -393,17 +572,14 @@
         if (!table[a]) table[a] = {};
         table[a][b] = (table[a][b] || 0) + 1;
       });
-
       const rows = Object.keys(table);
       const cols = new Set();
       rows.forEach(r => Object.keys(table[r]).forEach(c => cols.add(c)));
       const colNames = Array.from(cols);
-
       const obs = rows.map(r => colNames.map(c => table[r][c] || 0));
       const rowTot = obs.map(r => r.reduce((a,b) => a+b, 0));
       const colTot = colNames.map((_,j) => obs.reduce((s,r) => s+r[j], 0));
       const N = rowTot.reduce((a,b) => a+b, 0);
-
       let chi2 = 0;
       for (let i = 0; i < rows.length; i++) {
         for (let j = 0; j < colNames.length; j++) {
@@ -413,11 +589,9 @@
       }
       const df = (rows.length - 1) * (colNames.length - 1);
       const p = 1 - jStat.chisquare.cdf(chi2, df);
-
       let cont = '<table><tr><th></th>' + colNames.map(c => `<th>${c}</th>`).join('') + '</tr>';
       rows.forEach((r,i) => cont += `<tr><td><strong>${r}</strong></td>` + obs[i].map(v => `<td>${v}</td>`).join('') + '</tr>');
       cont += '</table>';
-
       div.innerHTML = `<div class="result">
         <h3>Chi-Square Independence (n=${N})</h3>
         <p><strong>Contingency Table:</strong></p>${cont}
@@ -425,6 +599,7 @@
         <p class="${p<0.05?'error':'success'}">${p<0.05?'Reject H₀: Dependent.':'Fail to reject H₀: Independent.'}</p>
       </div>`;
       showRationaleButton();
+      showPlotButton();
     }
 
     function groupComparison(quant, group, data, div) {
@@ -437,11 +612,9 @@
           groups[g].push(q);
         }
       });
-
       const validGroups = Object.fromEntries(
         Object.entries(groups).filter(([_, vals]) => vals.length >= 2)
       );
-
       const list = Object.keys(validGroups);
       if (list.length < 2) {
         div.innerHTML = `<div class="result">
@@ -451,13 +624,13 @@
           ${Object.entries(groups).map(([g, v]) => `<p><strong>${g}:</strong> n=${v.length}</p>`).join('')}
         </div>`;
         lastTest = null;
+        hidePlot();
         return;
       }
 
       const means = list.map(g => ss.mean(validGroups[g]));
       const sds = list.map(g => ss.standardDeviation(validGroups[g]));
       const ns = list.map(g => validGroups[g].length);
-
       let html = `<h3>${list.length === 2 ? 't-Test (Welch)' : 'One-Way ANOVA'}</h3>`;
       list.forEach((g,i) => html += `<p><strong>${g}:</strong> n=${ns[i]}, mean=${means[i].toFixed(3)}, sd=${sds[i].toFixed(3)}</p>`);
 
@@ -472,14 +645,29 @@
         }
       } else {
         try {
-          const values = list.map(g => validGroups[g]);
-          const anova = ss.anovaOneWay(values);
-          if (anova && anova.pValue !== undefined) {
-            html += `<p><strong>F =</strong> ${anova.F.toFixed(4)}, <strong>p =</strong> ${anova.pValue.toFixed(4)}</p>`;
-            html += `<p class="${anova.pValue<0.05?'error':'success'}">${anova.pValue<0.05?'Reject H₀: At least one mean differs.':'Fail to reject H₀'}</p>`;
-          } else {
-            html += '<p class="error">ANOVA failed (insufficient variation).</p>';
+          const k = list.length;
+          const N = ns.reduce((a,b)=>a+b,0);
+          const grandMean = means.reduce((s,m,i)=>s + m*ns[i],0) / N;
+
+          let SSb = 0;
+          for (let i=0;i<k;i++) SSb += ns[i] * Math.pow(means[i] - grandMean,2);
+
+          let SSw = 0;
+          for (let i=0;i<k;i++) {
+            const vals = validGroups[list[i]];
+            const m = means[i];
+            for (let v of vals) SSw += Math.pow(v-m,2);
           }
+
+          const dfb = k-1;
+          const dfw = N-k;
+          const MSb = SSb / dfb;
+          const MSw = SSw / dfw;
+          const F = MSb / MSw;
+          const p = 1 - jStat.centralF.cdf(F, dfb, dfw);
+
+          html += `<p><strong>F =</strong> ${F.toFixed(4)}, df = (${dfb}, ${dfw}), <strong>p =</strong> ${p.toFixed(4)}</p>`;
+          html += `<p class="${p<0.05?'error':'success'}">${p<0.05?'Reject H₀: At least one mean differs.':'Fail to reject H₀'}</p>`;
         } catch (e) {
           html += '<p class="error">ANOVA error: ' + e.message + '</p>';
         }
@@ -487,6 +675,7 @@
 
       div.innerHTML = `<div class="result">${html}</div>`;
       showRationaleButton();
+      showPlotButton();
     }
   </script>
 </body>
