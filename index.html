@@ -1,381 +1,1110 @@
 <!DOCTYPE html>
 <html lang="en">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Hypothesis Testing App</title>
-
-  <!-- LIBRARIES -->
-  <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/simple-statistics@7.8.3/dist/simple-statistics.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/jstat@latest/dist/jstat.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-annotation@2"></script>
-
-  <style>
-    body {font-family: Arial, sans-serif; margin:20px; background:#f4f6f9;}
-    .container {max-width:900px; margin:auto; background:white; padding:20px; border-radius:10px; box-shadow:0 2px 10px rgba(0,0,0,0.1);}
-    h1 {color:#2c3e50; margin-bottom:10px;}
-    input, select, button, textarea {margin:8px 0; padding:8px; width:100%; font-size:16px; box-sizing:border-box;}
-    textarea {white-space: pre-line; font-family: monospace;}
-    button {background:#3498db; color:white; border:none; cursor:pointer; border-radius:5px;}
-    button:hover {background:#2980b9;}
-    .btn-rationale {background:#27ae60; font-size:14px; width:auto; padding:8px 16px; margin:10px 0;}
-    .btn-rationale:hover {background:#1e8449;}
-    .btn-plot {background:#9b59b6; font-size:14px; width:auto; padding:8px 16px; margin:10px 5px 10px 0;}
-    .btn-plot:hover {background:#8e44ad;}
-    table {width:100%; border-collapse:collapse; margin:15px 0;}
-    th, td {border:1px solid #ddd; padding:8px; text-align:left;}
-    th {background:#f2f2f2;}
-    .result {margin-top:20px; padding:15px; border:1px solid #ddd; border-radius:5px; background:#f9f9f9;}
-    .warn {background:#fff3cd; padding:10px; border:1px solid #ffeeba; border-radius:5px; margin-bottom:15px;}
-    .error {color:red;}
-    .success {color:green;}
-    .toggle-btn {background:#7f8c8d; font-size:14px; width:auto; display:inline-block; margin:5px 0;}
-    .toggle-btn:hover {background:#95a5a6;}
-    .table-header {display:flex; justify-content:space-between; align-items:center;}
-    .input-section {transition: all 0.3s ease;}
-    .formula {background:#f8f9fa; padding:12px; border-left:4px solid #27ae60; margin:10px 0; font-family: monospace; font-size:1.1em;}
-    .rationale-modal {display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.7); z-index:1000; justify-content:center; align-items:center;}
-    .modal-content {background:white; padding:25px; border-radius:10px; max-width:600px; width:90%; max-height:80vh; overflow-y:auto; box-shadow:0 4px 20px rgba(0,0,0,0.2);}
-    .close-modal {float:right; font-size:24px; cursor:pointer; color:#aaa;}
-    .close-modal:hover {color:#000;}
-    #plotContainer {margin-top:20px; height:auto; position:relative;}
-    #plotContainer canvas {margin-bottom:20px;}
-  </style>
-</head>
-<body>
-  <div class="container">
-    <h1>Hypothesis Testing App</h1>
-
-    <div id="inputSection" class="input-section">
-      <label><strong>Upload CSV:</strong></label>
-      <input type="file" id="csvFile" accept=".csv" />
-      <label><strong>Or Paste CSV Here:</strong></label>
-      <textarea id="csvText" rows="8" placeholder="id,score,group
-1,85,A
-2,92,A
-3,78,B
-4,,B
-5,90,A
-6,95,C
-7,88,A
-8,82,B
-9,96,C"></textarea>
-      <button onclick="loadData()">Load Data</button>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title>Hypothesis Testing App</title>
+   
+    <!-- LIBRARIES -->
+    <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/simple-statistics@7.8.3/dist/simple-statistics.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/jstat@latest/dist/jstat.min.js"></script>
+     
+    <style>
+      body {font-family: Arial, sans-serif; margin:20px; background:#f4f6f9;}
+      .container {max-width:900px; margin:auto; background:white; padding:20px; border-radius:10px; box-shadow:0 2px 10px rgba(0,0,0,0.1);}
+      h1 {color:#2c3e50; margin-bottom:10px;}
+      input, select, button, textarea {margin:8px 0; padding:8px; width:100%; font-size:16px; box-sizing:border-box;}
+      textarea {white-space: pre-line; font-family: monospace;}
+      button {background:#3498db; color:white; border:none; cursor:pointer; border-radius:5px;}
+      button:hover {background:#2980b9;}
+      .btn-rationale {background:#27ae60; font-size:14px; width:auto; padding:8px 16px; margin:10px 0;}
+      .btn-rationale:hover {background:#1e8449;}
+      .btn-plot {background:#9b59b6; font-size:14px; width:auto; padding:8px 16px; margin:10px 5px 10px 0;}
+      .btn-plot:hover {background:#8e44ad;}
+      table {width:100%; border-collapse:collapse; margin:15px 0;}
+      th, td {border:1px solid #ddd; padding:8px; text-align:left;}
+      th {background:#f2f2f2;}
+      .result {margin-top:20px; padding:15px; border:1px solid #ddd; border-radius:5px; background:#f9f9f9;}
+      .warn {background:#fff3cd; padding:10px; border:1px solid #ffeeba; border-radius:5px; margin-bottom:15px;}
+      .error {color:red;}
+      .success {color:green;}
+      .toggle-btn {background:#7f8c8d; font-size:14px; width:auto; display:inline-block; margin:5px 0;}
+      .toggle-btn:hover {background:#95a5a6;}
+      .table-header {display:flex; justify-content:space-between; align-items:center;}
+      .input-section {transition: all 0.3s ease;}
+      .formula {background:#f8f9fa; padding:12px; border-left:4px solid #27ae60; margin:10px 0; font-family: monospace; font-size:1.1em;}
+      .rationale-modal {display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.7); z-index:1000; justify-content:center; align-items:center;}
+      .modal-content {background:white; padding:25px; border-radius:10px; max-width:600px; width:90%; max-height:80vh; overflow-y:auto; box-shadow:0 4px 20px rgba(0,0,0,0.2);}
+      .close-modal {float:right; font-size:24px; cursor:pointer; color:#aaa;}
+      .close-modal:hover {color:#000;}
+      #plotContainer {margin-top:20px; height:auto; position:relative;}
+      .plot-canvas {border: 1px solid #ddd; margin: 10px 0; background: white;}
+      .plot-title {text-align: center; font-weight: bold; margin: 10px 0; font-size: 16px;}
+      .plot-container {margin: 20px 0; padding: 15px; border: 1px solid #eee; border-radius: 5px; background: #fafafa;}
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <h1>Hypothesis Testing App</h1>
+     
+      <div id="inputSection" class="input-section">
+        <label><strong>Upload CSV:</strong></label>
+        <input type="file" id="csvFile" accept=".csv" />
+        <label><strong>Or Paste CSV Here:</strong></label>
+        <textarea id="csvText" rows="8" placeholder="score
+85
+92
+78
+90
+95
+88
+82
+96
+100
+75"></textarea>
+        <button onclick="loadData()">Load Data</button>
+      </div>
+     
+      <div id="tableContainer"></div>
+       
+      <div id="controls" style="display:none;">
+        <label><strong>Variable 1:</strong></label>
+        <select id="var1"></select>
+        <label><strong>Variable 2 (optional):</strong></label>
+        <select id="var2"><option value="">None</option></select>
+        <button onclick="runTest()">Run Test</button>
+      </div>
+     
+      <div id="results"></div>
+      <div id="plotContainer" style="display:none;"></div>
+    </div>
+     
+    <!-- RATIONALE MODAL -->
+    <div id="rationaleModal" class="rationale-modal">
+      <div class="modal-content">
+        <span class="close-modal" onclick="closeRationale()">×</span>
+        <div id="rationaleContent"><p>Run a test to see its explanation.</p></div>
+      </div>
     </div>
 
-    <div id="tableContainer"></div>
-
-    <div id="controls" style="display:none;">
-      <label><strong>Variable 1:</strong></label>
-      <select id="var1"></select>
-      <label><strong>Variable 2 (optional):</strong></label>
-      <select id="var2"><option value="">None</option></select>
-      <button onclick="runTest()">Run Test</button>
-    </div>
-
-    <div id="results"></div>
-    <div id="plotContainer" style="display:none;"></div>
-  </div>
-
-  <!-- RATIONALE MODAL -->
-  <div id="rationaleModal" class="rationale-modal">
-    <div class="modal-content">
-      <span class="close-modal" onclick="closeRationale()">x</span>
-      <div id="rationaleContent"><p>Run a test to see its explanation.</p></div>
-    </div>
-  </div>
-
-  <script>
-    let data = [];
-    let headers = [];
-    let lastTest = null;
-
-    /* ---------------------------------------------------------- */
-    /* DATA LOADING ------------------------------------------------ */
-    /* ---------------------------------------------------------- */
-    function loadData() {
-      const file = document.getElementById('csvFile').files[0];
-      const text = document.getElementById('csvText').value.trim();
-
-      const parse = r => {
-        if (r.errors.length) return alert('CSV error: ' + r.errors[0].message);
-        parseCSV(r.data);
-      };
-
-      if (file) {
-        Papa.parse(file, { complete: parse, skipEmptyLines: true, trimHeaders: true });
-      } else if (text) {
-        Papa.parse(text, { complete: parse, skipEmptyLines: true, trimHeaders: true });
-      } else {
-        return alert('Upload a file or paste CSV.');
-      }
-    }
-
-    function parseCSV(rows) {
-      rows = rows.filter(row => row.some(cell => cell !== '' && cell !== null));
-      if (rows.length < 1) return alert('No data rows found.');
-      headers = rows[0];
-      data = rows.slice(1).map(r => {
-        const o = {};
-        headers.forEach((h, i) => {
-          const val = (r[i] ?? '').trim();
-          o[h] = (val === '' || val === 'NA' || val === 'null') ? null : val;
-        });
-        return o;
-      });
-
-      document.getElementById('inputSection').style.display = 'none';
-      displayTable();
-      setupControls();
-    }
-
-    /* ---------------------------------------------------------- */
-    /* TABLE DISPLAY ------------------------------------------------ */
-    /* ---------------------------------------------------------- */
-    function displayTable() {
-      let html = `
-        <div class="table-header">
-          <h3 style="margin:0;">Data Table</h3>
-          <button class="toggle-btn" onclick="toggleTable()" id="toggleBtn">Hide Data Table</button>
-        </div>
-        <table><tr>`;
-      headers.forEach(h => html += `<th>${h}</th>`);
-      html += '</tr>';
-      data.forEach(r => {
-        html += '<tr>';
-        headers.forEach(h => {
-          const val = r[h] === null ? '<em style="color:#999;">(missing)</em>' : r[h];
-          html += `<td>${val}</td>`;
-        });
-        html += '</tr>';
-      });
-      html += '</table>';
-      document.getElementById('tableContainer').innerHTML = html;
-    }
-
-    function toggleTable() {
-      const table = document.querySelector('#tableContainer table');
-      const btn = document.getElementById('toggleBtn');
-      if (table.style.display !== 'none') {
-        table.style.display = 'none';
-        btn.textContent = 'Show Data Table';
-      } else {
-        table.style.display = 'table';
-        btn.textContent = 'Hide Data Table';
-      }
-    }
-
-    /* ---------------------------------------------------------- */
-    /* CONTROLS --------------------------------------------------- */
-    /* ---------------------------------------------------------- */
-    function setupControls() {
-      const s1 = document.getElementById('var1');
-      const s2 = document.getElementById('var2');
-      s1.innerHTML = ''; s2.innerHTML = '<option value="">None</option>';
-      headers.forEach(h => {
-        s1.innerHTML += `<option value="${h}">${h}</option>`;
-        s2.innerHTML += `<option value="${h}">${h}</option>`;
-      });
-      document.getElementById('controls').style.display = 'block';
-    }
-
-    function getCompleteCases(vars) {
-      return data.filter(row => vars.every(v => row[v] !== null));
-    }
-
-    function warnMissing(original, complete) {
-      if (original > complete) {
-        const d = document.createElement('div');
-        d.className = 'warn';
-        d.innerHTML = `<strong>Warning:</strong> ${original - complete} row(s) with missing values were <strong>excluded</strong>.`;
-        document.getElementById('results').appendChild(d);
-      }
-    }
-
-    function isQuantitative(col, data) {
-      const nums = data.map(r => parseFloat(r[col])).filter(v => !isNaN(v));
-      return nums.length >= 5 && new Set(nums).size > 10;
-    }
-
-    function isCategorical(col, data) {
-      const vals = data.map(r => r[col]).filter(v => v !== null);
-      return new Set(vals).size <= 10;
-    }
-
-    /* ---------------------------------------------------------- */
-    /* MAIN TEST LOGIC ------------------------------------------- */
-    /* ---------------------------------------------------------- */
-    function runTest() {
-      const v1 = document.getElementById('var1').value;
-      const v2 = document.getElementById('var2').value;
-      const res = document.getElementById('results');
-      res.innerHTML = '';
-      const selected = v2 ? [v1, v2] : [v1];
-      const completeData = getCompleteCases(selected);
-      const nComplete = completeData.length;
-      const nOriginal = data.length;
-      warnMissing(nOriginal, nComplete);
-
-      if (nComplete === 0) {
-        res.innerHTML = '<p class="error">No complete cases. Cannot run test.</p>';
-        lastTest = null;
-        hidePlot();
-        return;
-      }
-
-      if (!v2) {
-        if (isCategorical(v1, completeData)) {
-          lastTest = { type: 'gof', col: v1 };
-          chiSquareGOF(v1, completeData, res);
-        } else if (isQuantitative(v1, completeData)) {
-          lastTest = { type: 'one-sample-t', col: v1 };
-          oneSampleTTest(v1, completeData, res);
+    <script>
+      let data = [];
+      let headers = [];
+      let lastTest = null;
+     
+      /* ---------------------------------------------------------- */
+      /* DATA LOADING - FIXED VERSION ------------------------------ */
+      /* ---------------------------------------------------------- */
+      function loadData() {
+        const file = document.getElementById('csvFile').files[0];
+        const text = document.getElementById('csvText').value.trim();
+       
+        if (file) {
+          Papa.parse(file, { 
+            complete: function(results) {
+              if (results.errors.length) {
+                alert('CSV error: ' + results.errors[0].message);
+                return;
+              }
+              parseCSV(results.data);
+            },
+            skipEmptyLines: true,
+            trimHeaders: true,
+            header: false // Important: don't treat first row as header object
+          });
+        } else if (text) {
+          Papa.parse(text, { 
+            complete: function(results) {
+              if (results.errors.length) {
+                alert('CSV error: ' + results.errors[0].message);
+                return;
+              }
+              parseCSV(results.data);
+            },
+            skipEmptyLines: true,
+            trimHeaders: true,
+            header: false // Important: don't treat first row as header object
+          });
         } else {
-          res.innerHTML = '<p class="error">Variable type unclear.</p>';
-          lastTest = null;
-          hidePlot();
+          alert('Please upload a file or paste CSV data.');
+          return;
         }
-        return;
       }
 
-      const q1 = isQuantitative(v1, completeData);
-      const q2 = isQuantitative(v2, completeData);
-      const c1 = isCategorical(v1, completeData);
-      const c2 = isCategorical(v2, completeData);
-
-      if (c1 && c2) {
-        lastTest = { type: 'chi-ind', col1: v1, col2: v2 };
-        chiSquareIndependence(v1, v2, completeData, res);
-      } else if ((q1 && c2) || (q2 && c1)) {
-        const quant = q1 ? v1 : v2;
-        const group = q1 ? v2 : v1;
-        lastTest = { type: 'group', quant, group };
-        groupComparison(quant, group, completeData, res);
-      } else {
-        res.innerHTML = '<p class="error">Invalid combination.</p>';
-        lastTest = null;
-        hidePlot();
-      }
-    }
-
-    /* ---------------------------------------------------------- */
-    /* BUTTON HELPERS -------------------------------------------- */
-    /* ---------------------------------------------------------- */
-    function showRationaleButton() {
-      if (!lastTest) return;
-      const btn = document.createElement('button');
-      btn.textContent = 'Show Rationale & Formula';
-      btn.className = 'btn-rationale';
-      btn.onclick = openRationale;
-      document.getElementById('results').appendChild(btn);
-    }
-
-    function showPlotButton() {
-      if (!lastTest) return;
-      const btn = document.createElement('button');
-      btn.textContent = 'Show Plot';
-      btn.className = 'btn-plot';
-      btn.onclick = drawPlot;
-      document.getElementById('results').appendChild(btn);
-    }
-
-    function hidePlot() {
-      const container = document.getElementById('plotContainer');
-      container.style.display = 'none';
-      container.innerHTML = '';
-    }
-
-    /* ---------------------------------------------------------- */
-    /* PLOTTING -------------------------------------------------- */
-    /* ---------------------------------------------------------- */
-    function drawPlot() {
-      if (!lastTest) return;
-      const container = document.getElementById('plotContainer');
-      container.innerHTML = '';
-      container.style.display = 'block';
-
-      const complete = getCompleteCases(
-        lastTest.type === 'group' ? [lastTest.quant, lastTest.group] :
-        lastTest.type === 'chi-ind' ? [lastTest.col1, lastTest.col2] :
-        [lastTest.col]
-      );
-
-      /* ---------- ONE SAMPLE / QUANTITATIVE SINGLE ---------- */
-      if (lastTest.type === 'one-sample-t' || (lastTest.type === 'gof' && isQuantitative(lastTest.col, complete))) {
-        const values = complete.map(r => parseFloat(r[lastTest.col])).filter(v => !isNaN(v));
-
-        // HISTOGRAM
-        const hist = ss.histogram(values, 10);
-        const labels = hist.map(bin => `${bin.x0.toFixed(1)}–${bin.x1.toFixed(1)}`);
-        const histData = hist.map(bin => bin.count);
-        const histCanvas = document.createElement('canvas');
-        container.appendChild(histCanvas);
-        new Chart(histCanvas.getContext('2d'), {
-          type: 'bar',
-          data: { labels, datasets: [{ label: lastTest.col, data: histData, backgroundColor: 'rgba(54,162,235,0.6)' }] },
-          options: { responsive: true, plugins: { title: { display: true, text: `Histogram of ${lastTest.col}` } } }
+      function parseCSV(rows) {
+        console.log('Raw parsed data:', rows);
+        
+        // Filter out completely empty rows
+        rows = rows.filter(row => row.some(cell => cell !== '' && cell !== null && cell !== undefined));
+        
+        if (rows.length < 1) {
+          alert('No data rows found after filtering empty rows.');
+          return;
+        }
+        
+        // First row is headers
+        headers = rows[0].map(h => h.trim());
+        
+        // Rest is data
+        data = rows.slice(1).map(row => {
+          const obj = {};
+          headers.forEach((header, index) => {
+            let value = row[index];
+            if (value === undefined || value === null) {
+              value = null;
+            } else {
+              value = value.toString().trim();
+              if (value === '' || value === 'NA' || value === 'null') {
+                value = null;
+              }
+            }
+            obj[header] = value;
+          });
+          return obj;
         });
+        
+        console.log('Headers:', headers);
+        console.log('Data:', data);
+        
+        // Hide input section and show data
+        document.getElementById('inputSection').style.display = 'none';
+        displayTable();
+        setupControls();
+      }
 
-        // BOX-PLOT
-        const sorted = [...values].sort((a,b) => a-b);
+      /* ---------------------------------------------------------- */
+      /* TABLE DISPLAY ------------------------------------------------ */
+      /* ---------------------------------------------------------- */
+      function displayTable() {
+        let html = `
+          <div class="table-header">
+            <h3 style="margin:0;">Data Table (${data.length} rows)</h3>
+            <button class="toggle-btn" onclick="toggleTable()" id="toggleBtn">Hide Data Table</button>
+          </div>
+          <table><tr>`;
+        headers.forEach(h => html += `<th>${h}</th>`);
+        html += '</tr>';
+        
+        data.forEach(r => {
+          html += '<tr>';
+          headers.forEach(h => {
+            const val = r[h] === null ? '<em style="color:#999;">(missing)</em>' : r[h];
+            html += `<td>${val}</td>`;
+          });
+          html += '</tr>';
+        });
+        html += '</table>';
+        document.getElementById('tableContainer').innerHTML = html;
+      }
+
+      function toggleTable() {
+        const table = document.querySelector('#tableContainer table');
+        const btn = document.getElementById('toggleBtn');
+        if (table.style.display !== 'none') {
+          table.style.display = 'none';
+          btn.textContent = 'Show Data Table';
+        } else {
+          table.style.display = 'table';
+          btn.textContent = 'Hide Data Table';
+        }
+      }
+
+      /* ---------------------------------------------------------- */
+      /* CONTROLS --------------------------------------------------- */
+      /* ---------------------------------------------------------- */
+      function setupControls() {
+        const s1 = document.getElementById('var1');
+        const s2 = document.getElementById('var2');
+        s1.innerHTML = ''; 
+        s2.innerHTML = '<option value="">None</option>';
+        
+        headers.forEach(h => {
+          s1.innerHTML += `<option value="${h}">${h}</option>`;
+          s2.innerHTML += `<option value="${h}">${h}</option>`;
+        });
+        
+        document.getElementById('controls').style.display = 'block';
+      }
+
+      function getCompleteCases(vars) {
+        return data.filter(row => vars.every(v => row[v] !== null));
+      }
+
+      function warnMissing(original, complete) {
+        if (original > complete) {
+          const d = document.createElement('div');
+          d.className = 'warn';
+          d.innerHTML = `<strong>Warning:</strong> ${original - complete} row(s) with missing values were <strong>excluded</strong>.`;
+          document.getElementById('results').appendChild(d);
+        }
+      }
+
+      function isQuantitative(col, data) {
+        const nums = data.map(r => {
+          const val = r[col];
+          if (val === null) return NaN;
+          const num = parseFloat(val);
+          return isNaN(num) ? NaN : num;
+        }).filter(v => !isNaN(v));
+        
+        return nums.length >= 5 && new Set(nums).size > 10;
+      }
+
+      function isCategorical(col, data) {
+        const vals = data.map(r => r[col]).filter(v => v !== null);
+        return new Set(vals).size <= 10;
+      }
+
+      /* ---------------------------------------------------------- */
+      /* CUSTOM PLOTTING FUNCTIONS --------------------------------- */
+      /* ---------------------------------------------------------- */
+      
+      function drawHistogram(values, container, title) {
+        if (!values || values.length < 2) return;
+        
+        const canvas = document.createElement('canvas');
+        canvas.className = 'plot-canvas';
+        canvas.width = 600;
+        canvas.height = 400;
+        const ctx = canvas.getContext('2d');
+        
+        // Calculate histogram
+        const min = Math.min(...values);
+        const max = Math.max(...values);
+        const range = max - min;
+        const binCount = Math.min(10, Math.ceil(values.length / 5));
+        const binWidth = range / binCount;
+        
+        // Create bins
+        const bins = Array(binCount).fill(0);
+        values.forEach(value => {
+          const binIndex = Math.min(binCount - 1, Math.floor((value - min) / binWidth));
+          bins[binIndex]++;
+        });
+        
+        // Setup drawing area
+        const padding = 60;
+        const graphWidth = canvas.width - 2 * padding;
+        const graphHeight = canvas.height - 2 * padding;
+        const maxFreq = Math.max(...bins);
+        
+        // Clear canvas
+        ctx.fillStyle = 'white';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        
+        // Draw title
+        ctx.fillStyle = 'black';
+        ctx.font = '16px Arial';
+        ctx.textAlign = 'center';
+        ctx.fillText(title, canvas.width / 2, 20);
+        
+        // Draw axes
+        ctx.strokeStyle = 'black';
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.moveTo(padding, padding);
+        ctx.lineTo(padding, canvas.height - padding);
+        ctx.lineTo(canvas.width - padding, canvas.height - padding);
+        ctx.stroke();
+        
+        // Draw bars
+        const barWidth = graphWidth / binCount;
+        ctx.fillStyle = 'rgba(54, 162, 235, 0.6)';
+        ctx.strokeStyle = 'rgba(54, 162, 235, 1)';
+        
+        // Draw only every other bin label to reduce crowding
+        const labelInterval = Math.max(1, Math.ceil(binCount / 5));
+        
+        bins.forEach((freq, i) => {
+          const barHeight = (freq / maxFreq) * graphHeight;
+          const x = padding + i * barWidth;
+          const y = canvas.height - padding - barHeight;
+          
+          ctx.fillRect(x, y, barWidth - 2, barHeight);
+          ctx.strokeRect(x, y, barWidth - 2, barHeight);
+          
+          // Draw bin label (only for selected intervals to reduce crowding)
+          if (i % labelInterval === 0 || i === binCount - 1) {
+            ctx.fillStyle = 'black';
+            ctx.font = '12px Arial';
+            ctx.textAlign = 'center';
+            const binStart = min + i * binWidth;
+            const binEnd = min + (i + 1) * binWidth;
+            ctx.fillText(
+              `${binStart.toFixed(1)}`, 
+              x + barWidth / 2, 
+              canvas.height - padding + 20
+            );
+          }
+          
+          // Draw frequency label (only if there's enough space)
+          if (freq > 0 && barHeight > 20) {
+            ctx.fillStyle = 'black';
+            ctx.font = '10px Arial';
+            ctx.textAlign = 'center';
+            ctx.fillText(
+              freq.toString(), 
+              x + barWidth / 2, 
+              y - 5
+            );
+          }
+          
+          ctx.fillStyle = 'rgba(54, 162, 235, 0.6)';
+        });
+        
+        // Draw Y-axis labels
+        ctx.fillStyle = 'black';
+        ctx.textAlign = 'right';
+        ctx.textBaseline = 'middle';
+        for (let i = 0; i <= 5; i++) {
+          const freq = (i / 5) * maxFreq;
+          const y = canvas.height - padding - (i / 5) * graphHeight;
+          ctx.fillText(Math.round(freq).toString(), padding - 5, y);
+        }
+        
+        // Draw axis titles
+        ctx.textAlign = 'center';
+        ctx.save();
+        ctx.translate(20, canvas.height / 2);
+        ctx.rotate(-Math.PI / 2);
+        ctx.fillText('Frequency', 0, 0);
+        ctx.restore();
+        
+        ctx.fillText('Values', canvas.width / 2, canvas.height - 10);
+        
+        container.appendChild(canvas);
+      }
+      
+      function drawBoxplot(values, container, title) {
+        if (!values || values.length < 2) return;
+        
+        const canvas = document.createElement('canvas');
+        canvas.className = 'plot-canvas';
+        canvas.width = 600;
+        canvas.height = 300;
+        const ctx = canvas.getContext('2d');
+        
+        // Calculate boxplot statistics
+        const sorted = [...values].sort((a, b) => a - b);
         const q1 = ss.quantile(sorted, 0.25);
-        const q2 = ss.median(sorted);
+        const median = ss.median(sorted);
         const q3 = ss.quantile(sorted, 0.75);
         const iqr = q3 - q1;
         const lowerWhisker = Math.max(sorted[0], q1 - 1.5 * iqr);
-        const upperWhisker = Math.min(sorted[sorted.length-1], q3 + 1.5 * iqr);
-
-        const boxCanvas = document.createElement('canvas');
-        boxCanvas.style.marginTop = '30px';
-        container.appendChild(boxCanvas);
-        new Chart(boxCanvas.getContext('2d'), {
-          type: 'boxplot',
-          data: {
-            labels: [lastTest.col],
-            datasets: [{
-              label: 'Box-plot',
-              data: [{ min: lowerWhisker, q1, median: q2, q3, max: upperWhisker }],
-              backgroundColor: 'rgba(255,159,64,0.5)',
-              borderColor: 'rgba(255,159,64,1)'
-            }]
-          },
-          options: { responsive: true, plugins: { title: { display: true, text: `Box-plot of ${lastTest.col}` } } }
+        const upperWhisker = Math.min(sorted[sorted.length - 1], q3 + 1.5 * iqr);
+        
+        // Find outliers
+        const outliers = values.filter(v => v < lowerWhisker || v > upperWhisker);
+        
+        // Setup drawing area
+        const padding = 80; // Increased padding for better labels
+        const graphWidth = canvas.width - 2 * padding;
+        const graphHeight = canvas.height - 2 * padding;
+        const minValue = Math.min(lowerWhisker, ...outliers);
+        const maxValue = Math.max(upperWhisker, ...outliers);
+        const valueRange = maxValue - minValue;
+        
+        // Clear canvas
+        ctx.fillStyle = 'white';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        
+        // Draw title
+        ctx.fillStyle = 'black';
+        ctx.font = '16px Arial';
+        ctx.textAlign = 'center';
+        ctx.fillText(title, canvas.width / 2, 20);
+        
+        // Scale function
+        const scale = value => padding + ((value - minValue) / valueRange) * graphWidth;
+        
+        // Draw main line
+        ctx.strokeStyle = 'black';
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.moveTo(padding, padding + graphHeight / 2);
+        ctx.lineTo(canvas.width - padding, padding + graphHeight / 2);
+        ctx.stroke();
+        
+        // Draw box
+        const boxLeft = scale(q1);
+        const boxRight = scale(q3);
+        const boxTop = padding + graphHeight / 2 - 20;
+        const boxBottom = padding + graphHeight / 2 + 20;
+        
+        ctx.fillStyle = 'rgba(255, 159, 64, 0.5)';
+        ctx.fillRect(boxLeft, boxTop, boxRight - boxLeft, boxBottom - boxTop);
+        ctx.strokeStyle = 'rgba(255, 159, 64, 1)';
+        ctx.lineWidth = 2;
+        ctx.strokeRect(boxLeft, boxTop, boxRight - boxLeft, boxBottom - boxTop);
+        
+        // Draw median line
+        const medianX = scale(median);
+        ctx.strokeStyle = 'red';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(medianX, boxTop);
+        ctx.lineTo(medianX, boxBottom);
+        ctx.stroke();
+        
+        // Draw whiskers
+        ctx.strokeStyle = 'black';
+        ctx.lineWidth = 1;
+        
+        // Left whisker
+        ctx.beginPath();
+        ctx.moveTo(scale(lowerWhisker), padding + graphHeight / 2);
+        ctx.lineTo(boxLeft, padding + graphHeight / 2);
+        ctx.stroke();
+        
+        // Right whisker
+        ctx.beginPath();
+        ctx.moveTo(boxRight, padding + graphHeight / 2);
+        ctx.lineTo(scale(upperWhisker), padding + graphHeight / 2);
+        ctx.stroke();
+        
+        // Draw whisker ends
+        ctx.beginPath();
+        ctx.moveTo(scale(lowerWhisker), padding + graphHeight / 2 - 10);
+        ctx.lineTo(scale(lowerWhisker), padding + graphHeight / 2 + 10);
+        ctx.stroke();
+        
+        ctx.beginPath();
+        ctx.moveTo(scale(upperWhisker), padding + graphHeight / 2 - 10);
+        ctx.lineTo(scale(upperWhisker), padding + graphHeight / 2 + 10);
+        ctx.stroke();
+        
+        // Draw outliers
+        ctx.fillStyle = 'rgba(255, 99, 132, 1)';
+        outliers.forEach(outlier => {
+          const x = scale(outlier);
+          ctx.beginPath();
+          ctx.arc(x, padding + graphHeight / 2, 3, 0, 2 * Math.PI);
+          ctx.fill();
         });
-
-        return;
-      }
-
-      /* ---------- GOODNESS-OF-FIT (categorical) ---------- */
-      if (lastTest.type === 'gof') {
-        const counts = {};
-        complete.forEach(r => { const v = r[lastTest.col]; counts[v] = (counts[v] || 0) + 1; });
-        const cats = Object.keys(counts).sort();
-        const obs = cats.map(c => counts[c]);
-        const exp = lastTest.exp || cats.map(() => complete.length / cats.length);
-
-        const canvas = document.createElement('canvas');
+        
+        // Draw value labels with better spacing
+        ctx.fillStyle = 'black';
+        ctx.font = '12px Arial';
+        ctx.textAlign = 'center';
+        
+        const importantValues = [
+          {value: lowerWhisker, label: `Min: ${lowerWhisker.toFixed(1)}`},
+          {value: q1, label: `Q1: ${q1.toFixed(1)}`},
+          {value: median, label: `Med: ${median.toFixed(1)}`},
+          {value: q3, label: `Q3: ${q3.toFixed(1)}`},
+          {value: upperWhisker, label: `Max: ${upperWhisker.toFixed(1)}`}
+        ];
+        
+        // Only show labels if they have enough space between them
+        importantValues.forEach((item, i) => {
+          const x = scale(item.value);
+          let showLabel = true;
+          
+          // Check if this label would overlap with previous one
+          if (i > 0) {
+            const prevX = scale(importantValues[i-1].value);
+            if (Math.abs(x - prevX) < 80) { // Minimum 80px spacing
+              showLabel = false;
+            }
+          }
+          
+          if (showLabel) {
+            ctx.fillText(item.label, x, padding + graphHeight + 25);
+          }
+        });
+        
+        // Draw outlier info below the main labels
+        if (outliers.length > 0) {
+          ctx.fillStyle = 'red';
+          ctx.font = '12px Arial';
+          ctx.fillText(`Outliers: ${outliers.length}`, canvas.width / 2, padding + graphHeight + 45);
+        }
+        
         container.appendChild(canvas);
-        new Chart(canvas.getContext('2d'), {
-          type: 'bar',
-          data: {
-            labels: cats,
-            datasets: [
-              { label: 'Observed', data: obs, backgroundColor: 'rgba(255,99,132,0.6)' },
-              { label: 'Expected', data: exp, backgroundColor: 'rgba(75,192,192,0.6)' }
-            ]
-          },
-          options: { responsive: true, plugins: { title: { display: true, text: `Goodness-of-Fit: ${lastTest.col}` } } }
-        });
-        return;
       }
 
-      /* ---------- CHI-SQUARE INDEPENDENCE ---------- */
-      if (lastTest.type === 'chi-ind') {
+      function drawContingencyTablePlot(col1, col2, data, container, title) {
+        if (!data || data.length === 0) return;
+        
+        const canvas = document.createElement('canvas');
+        canvas.className = 'plot-canvas';
+        canvas.width = 600;
+        canvas.height = 400;
+        const ctx = canvas.getContext('2d');
+        
+        // Build contingency table
         const table = {};
-        complete.forEach(r => {
-          const a = r[lastTest.col1], b = r[lastTest.col2];
+        const col1Values = new Set();
+        const col2Values = new Set();
+        
+        data.forEach(r => {
+          const val1 = r[col1];
+          const val2 = r[col2];
+          if (val1 !== null && val2 !== null) {
+            if (!table[val1]) table[val1] = {};
+            table[val1][val2] = (table[val1][val2] || 0) + 1;
+            col1Values.add(val1);
+            col2Values.add(val2);
+          }
+        });
+        
+        const rowLabels = Array.from(col1Values).sort();
+        const colLabels = Array.from(col2Values).sort();
+        
+        if (rowLabels.length === 0 || colLabels.length === 0) return;
+        
+        // Calculate frequencies
+        const frequencies = rowLabels.map(row => 
+          colLabels.map(col => table[row]?.[col] || 0)
+        );
+        
+        const maxFreq = Math.max(...frequencies.flat());
+        
+        // Setup drawing area
+        const padding = 80;
+        const graphWidth = canvas.width - 2 * padding;
+        const graphHeight = canvas.height - 2 * padding;
+        const cellWidth = graphWidth / colLabels.length;
+        const cellHeight = graphHeight / rowLabels.length;
+        
+        // Clear canvas
+        ctx.fillStyle = 'white';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        
+        // Draw title
+        ctx.fillStyle = 'black';
+        ctx.font = '16px Arial';
+        ctx.textAlign = 'center';
+        ctx.fillText(title, canvas.width / 2, 20);
+        
+        // Draw heatmap cells
+        rowLabels.forEach((rowLabel, rowIndex) => {
+          colLabels.forEach((colLabel, colIndex) => {
+            const freq = frequencies[rowIndex][colIndex];
+            const intensity = maxFreq > 0 ? (freq / maxFreq) * 0.8 + 0.2 : 0.2;
+            
+            const x = padding + colIndex * cellWidth;
+            const y = padding + rowIndex * cellHeight;
+            
+            // Draw cell with color intensity based on frequency
+            ctx.fillStyle = `rgba(54, 162, 235, ${intensity})`;
+            ctx.fillRect(x, y, cellWidth, cellHeight);
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.8)';
+            ctx.strokeRect(x, y, cellWidth, cellHeight);
+            
+            // Draw frequency number
+            if (freq > 0) {
+              ctx.fillStyle = freq > maxFreq * 0.5 ? 'white' : 'black';
+              ctx.font = '12px Arial';
+              ctx.textAlign = 'center';
+              ctx.textBaseline = 'middle';
+              ctx.fillText(
+                freq.toString(), 
+                x + cellWidth / 2, 
+                y + cellHeight / 2
+              );
+            }
+          });
+        });
+        
+        // Draw row labels (left side)
+        ctx.fillStyle = 'black';
+        ctx.font = '12px Arial';
+        ctx.textAlign = 'right';
+        ctx.textBaseline = 'middle';
+        rowLabels.forEach((label, i) => {
+          const y = padding + i * cellHeight + cellHeight / 2;
+          ctx.fillText(label, padding - 10, y);
+        });
+        
+        // Draw column labels (top)
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'bottom';
+        colLabels.forEach((label, i) => {
+          const x = padding + i * cellWidth + cellWidth / 2;
+          ctx.fillText(label, x, padding - 10);
+        });
+        
+        // Draw axis titles
+        ctx.textAlign = 'center';
+        ctx.save();
+        ctx.translate(20, canvas.height / 2);
+        ctx.rotate(-Math.PI / 2);
+        ctx.fillText(col1, 0, 0);
+        ctx.restore();
+        
+        ctx.fillText(col2, canvas.width / 2, canvas.height - 10);
+        
+        // Draw legend
+        ctx.fillStyle = 'black';
+        ctx.font = '12px Arial';
+        ctx.textAlign = 'left';
+        ctx.fillText('Frequency Heatmap (darker = higher frequency)', padding, 40);
+        
+        container.appendChild(canvas);
+      }
+
+      /* ---------------------------------------------------------- */
+      /* MAIN TEST LOGIC ------------------------------------------- */
+      /* ---------------------------------------------------------- */
+      function runTest() {
+        const v1 = document.getElementById('var1').value;
+        const v2 = document.getElementById('var2').value;
+        const res = document.getElementById('results');
+        res.innerHTML = '';
+        const selected = v2 ? [v1, v2] : [v1];
+        const completeData = getCompleteCases(selected);
+        const nComplete = completeData.length;
+        const nOriginal = data.length;
+        warnMissing(nOriginal, nComplete);
+       
+        if (nComplete === 0) {
+          res.innerHTML = '<p class="error">No complete cases. Cannot run test.</p>';
+          lastTest = null;
+          hidePlot();
+          return;
+        }
+       
+        if (!v2) {
+          if (isCategorical(v1, completeData)) {
+            lastTest = { type: 'gof', col: v1 };
+            chiSquareGOF(v1, completeData, res);
+          } else if (isQuantitative(v1, completeData)) {
+            lastTest = { type: 'one-sample-t', col: v1 };
+            oneSampleTTest(v1, completeData, res);
+          } else {
+            res.innerHTML = '<p class="error">Variable type unclear.</p>';
+            lastTest = null;
+            hidePlot();
+          }
+          return;
+        }
+       
+        const q1 = isQuantitative(v1, completeData);
+        const q2 = isQuantitative(v2, completeData);
+        const c1 = isCategorical(v1, completeData);
+        const c2 = isCategorical(v2, completeData);
+       
+        if (c1 && c2) {
+          lastTest = { type: 'chi-ind', col1: v1, col2: v2 };
+          chiSquareIndependence(v1, v2, completeData, res);
+        } else if ((q1 && c2) || (q2 && c1)) {
+          const quant = q1 ? v1 : v2;
+          const group = q1 ? v2 : v1;
+          lastTest = { type: 'group', quant, group };
+          groupComparison(quant, group, completeData, res);
+        } else {
+          res.innerHTML = '<p class="error">Invalid combination.</p>';
+          lastTest = null;
+          hidePlot();
+        }
+      }
+
+      /* ---------------------------------------------------------- */
+      /* BUTTON HELPERS -------------------------------------------- */
+      /* ---------------------------------------------------------- */
+      function showRationaleButton() {
+        if (!lastTest) return;
+        const btn = document.createElement('button');
+        btn.textContent = 'Show Rationale & Formula';
+        btn.className = 'btn-rationale';
+        btn.onclick = openRationale;
+        document.getElementById('results').appendChild(btn);
+      }
+
+      function showPlotButton() {
+        if (!lastTest) return;
+        const btn = document.createElement('button');
+        btn.textContent = 'Show Plot';
+        btn.className = 'btn-plot';
+        btn.onclick = drawPlot;
+        document.getElementById('results').appendChild(btn);
+      }
+
+      function hidePlot() {
+        const container = document.getElementById('plotContainer');
+        container.style.display = 'none';
+        container.innerHTML = '';
+      }
+
+      /* ---------------------------------------------------------- */
+      /* PLOTTING -------------------------------------------------- */
+      /* ---------------------------------------------------------- */
+      function drawPlot() {
+        if (!lastTest) return;
+
+        const container = document.getElementById('plotContainer');
+        container.innerHTML = '';
+        container.style.display = 'block';
+
+        let vars = [];
+        if (lastTest.type === 'one-sample-t' || lastTest.type === 'gof') {
+          vars = [lastTest.col];
+        } else if (lastTest.type === 'group') {
+          vars = [lastTest.quant, lastTest.group];
+        } else if (lastTest.type === 'chi-ind') {
+          vars = [lastTest.col1, lastTest.col2];
+        }
+
+        const complete = getCompleteCases(vars);
+        if (complete.length === 0) {
+          container.innerHTML = '<p class="error">No complete data for plotting.</p>';
+          return;
+        }
+
+        /* ---------- ONE SAMPLE T-TEST (QUANTITATIVE SINGLE) ---------- */
+        if (lastTest.type === 'one-sample-t') {
+          const values = complete
+            .map(r => {
+              const val = parseFloat(r[lastTest.col]);
+              return isNaN(val) ? null : val;
+            })
+            .filter(v => v !== null);
+
+          if (values.length < 2) {
+            container.innerHTML = '<p class="error">Need ≥2 valid values for plot.</p>';
+            return;
+          }
+
+          // Create plot container
+          const plotDiv = document.createElement('div');
+          plotDiv.className = 'plot-container';
+          
+          // Draw histogram
+          const histTitle = document.createElement('div');
+          histTitle.className = 'plot-title';
+          histTitle.textContent = `Histogram of ${lastTest.col}`;
+          plotDiv.appendChild(histTitle);
+          
+          drawHistogram(values, plotDiv, `Histogram of ${lastTest.col}`);
+          
+          // Draw boxplot
+          const boxTitle = document.createElement('div');
+          boxTitle.className = 'plot-title';
+          boxTitle.textContent = `Box Plot of ${lastTest.col}`;
+          boxTitle.style.marginTop = '30px';
+          plotDiv.appendChild(boxTitle);
+          
+          drawBoxplot(values, plotDiv, `Box Plot of ${lastTest.col}`);
+          
+          container.appendChild(plotDiv);
+          return;
+        }
+
+        /* ---------- GOODNESS-OF-FIT (categorical) ---------- */
+        if (lastTest.type === 'gof') {
+          const counts = {};
+          complete.forEach(r => { const v = r[lastTest.col]; counts[v] = (counts[v] || 0) + 1; });
+          const cats = Object.keys(counts).sort();
+          const obs = cats.map(c => counts[c]);
+          const exp = lastTest.exp || cats.map(() => complete.length / cats.length);
+
+          const plotDiv = document.createElement('div');
+          plotDiv.className = 'plot-container';
+          
+          const title = document.createElement('div');
+          title.className = 'plot-title';
+          title.textContent = `Goodness-of-Fit: ${lastTest.col}`;
+          plotDiv.appendChild(title);
+          
+          const canvas = document.createElement('canvas');
+          canvas.className = 'plot-canvas';
+          canvas.width = 600;
+          canvas.height = 400;
+          const ctx = canvas.getContext('2d');
+          
+          // Clear canvas
+          ctx.fillStyle = 'white';
+          ctx.fillRect(0, 0, canvas.width, canvas.height);
+          
+          // Setup drawing area
+          const padding = 60;
+          const graphWidth = canvas.width - 2 * padding;
+          const graphHeight = canvas.height - 2 * padding;
+          const maxFreq = Math.max(...obs, ...exp);
+          const barWidth = graphWidth / (cats.length * 2);
+          
+          // Draw title
+          ctx.fillStyle = 'black';
+          ctx.font = '16px Arial';
+          ctx.textAlign = 'center';
+          ctx.fillText(`Goodness-of-Fit: ${lastTest.col}`, canvas.width / 2, 20);
+          
+          // Draw bars
+          cats.forEach((cat, i) => {
+            const x = padding + i * (barWidth * 2);
+            
+            // Observed bar
+            const obsHeight = (obs[i] / maxFreq) * graphHeight;
+            ctx.fillStyle = 'rgba(255,99,132,0.6)';
+            ctx.fillRect(x, canvas.height - padding - obsHeight, barWidth - 2, obsHeight);
+            ctx.strokeStyle = 'rgba(255,99,132,1)';
+            ctx.strokeRect(x, canvas.height - padding - obsHeight, barWidth - 2, obsHeight);
+            
+            // Expected bar
+            const expHeight = (exp[i] / maxFreq) * graphHeight;
+            ctx.fillStyle = 'rgba(75,192,192,0.6)';
+            ctx.fillRect(x + barWidth, canvas.height - padding - expHeight, barWidth - 2, expHeight);
+            ctx.strokeStyle = 'rgba(75,192,192,1)';
+            ctx.strokeRect(x + barWidth, canvas.height - padding - expHeight, barWidth - 2, expHeight);
+            
+            // Category label (only show if there's enough space)
+            if (barWidth * 2 > 40) { // Only show label if bar group is wide enough
+              ctx.fillStyle = 'black';
+              ctx.font = '12px Arial';
+              ctx.textAlign = 'center';
+              ctx.fillText(cat, x + barWidth, canvas.height - padding + 20);
+            }
+            
+            // Value labels (only show if there's enough space)
+            if (barWidth > 30) {
+              ctx.fillText(`O:${obs[i]}`, x + barWidth / 2, canvas.height - padding - obsHeight - 5);
+              ctx.fillText(`E:${exp[i].toFixed(1)}`, x + barWidth * 1.5, canvas.height - padding - expHeight - 5);
+            }
+          });
+          
+          // Draw legend
+          ctx.fillStyle = 'rgba(255,99,132,0.6)';
+          ctx.fillRect(padding, 40, 20, 20);
+          ctx.fillStyle = 'black';
+          ctx.fillText('Observed', padding + 30, 55);
+          
+          ctx.fillStyle = 'rgba(75,192,192,0.6)';
+          ctx.fillRect(padding + 100, 40, 20, 20);
+          ctx.fillStyle = 'black';
+          ctx.fillText('Expected', padding + 130, 55);
+          
+          plotDiv.appendChild(canvas);
+          container.appendChild(plotDiv);
+          return;
+        }
+
+        /* ---------- CHI-SQUARE INDEPENDENCE (TWO CATEGORICAL) ---------- */
+        if (lastTest.type === 'chi-ind') {
+          const plotDiv = document.createElement('div');
+          plotDiv.className = 'plot-container';
+          
+          const title = document.createElement('div');
+          title.className = 'plot-title';
+          title.textContent = `Contingency Table: ${lastTest.col1} vs ${lastTest.col2}`;
+          plotDiv.appendChild(title);
+          
+          drawContingencyTablePlot(lastTest.col1, lastTest.col2, complete, plotDiv, 
+                                 `Contingency Table: ${lastTest.col1} vs ${lastTest.col2}`);
+          
+          container.appendChild(plotDiv);
+          return;
+        }
+
+        /* ---------- GROUP COMPARISON (t-test / ANOVA) ---------- */
+        if (lastTest.type === 'group') {
+          const groups = {};
+          complete.forEach(r => {
+            const g = r[lastTest.group];
+            const q = parseFloat(r[lastTest.quant]);
+            if (!groups[g]) groups[g] = [];
+            groups[g].push(q);
+          });
+          const labels = Object.keys(groups);
+          const means = labels.map(g => ss.mean(groups[g]));
+
+          const plotDiv = document.createElement('div');
+          plotDiv.className = 'plot-container';
+          
+          const title = document.createElement('div');
+          title.className = 'plot-title';
+          title.textContent = `${lastTest.quant} by ${lastTest.group}`;
+          plotDiv.appendChild(title);
+          
+          const canvas = document.createElement('canvas');
+          canvas.className = 'plot-canvas';
+          canvas.width = 600;
+          canvas.height = 400;
+          const ctx = canvas.getContext('2d');
+          
+          // Clear canvas
+          ctx.fillStyle = 'white';
+          ctx.fillRect(0, 0, canvas.width, canvas.height);
+          
+          // Setup drawing area
+          const padding = 60;
+          const graphWidth = canvas.width - 2 * padding;
+          const graphHeight = canvas.height - 2 * padding;
+          const maxMean = Math.max(...means);
+          const barWidth = graphWidth / labels.length;
+          
+          // Draw title
+          ctx.fillStyle = 'black';
+          ctx.font = '16px Arial';
+          ctx.textAlign = 'center';
+          ctx.fillText(`${lastTest.quant} by ${lastTest.group}`, canvas.width / 2, 20);
+          
+          // Draw bars
+          labels.forEach((label, i) => {
+            const barHeight = (means[i] / maxMean) * graphHeight;
+            const x = padding + i * barWidth;
+            const y = canvas.height - padding - barHeight;
+            
+            ctx.fillStyle = 'rgba(54,162,235,0.6)';
+            ctx.fillRect(x, y, barWidth - 10, barHeight);
+            ctx.strokeStyle = 'rgba(54,162,235,1)';
+            ctx.strokeRect(x, y, barWidth - 10, barHeight);
+            
+            // Draw group label
+            ctx.fillStyle = 'black';
+            ctx.font = '12px Arial';
+            ctx.textAlign = 'center';
+            ctx.fillText(label, x + barWidth / 2, canvas.height - padding + 20);
+            
+            // Draw mean value
+            ctx.fillText(means[i].toFixed(2), x + barWidth / 2, y - 10);
+          });
+          
+          plotDiv.appendChild(canvas);
+          container.appendChild(plotDiv);
+          return;
+        }
+      }
+
+      /* ---------------------------------------------------------- */
+      /* RATIONALE MODAL ------------------------------------------- */
+      /* ---------------------------------------------------------- */
+      function openRationale() {
+        if (!lastTest) return;
+        updateRationale(lastTest);
+        document.getElementById('rationaleModal').style.display = 'flex';
+      }
+
+      function closeRationale() {
+        document.getElementById('rationaleModal').style.display = 'none';
+      }
+
+      function updateRationale(test) {
+        const content = document.getElementById('rationaleContent');
+        let html = '<h3>Method Explanation</h3>';
+       
+        if (test.type === 'one-sample-t') {
+          html += `
+            <h3>One-Sample t-Test</h3>
+            <p><strong>H₀:</strong> μ = μ₀ (user-defined)</p>
+            <p><strong>H₁:</strong> μ ≠ μ₀</p>
+            <div class="formula">t = (x̄ - μ₀) / (s / √n)</div>
+            <p>df = n - 1</p>
+            <p><strong>p < 0.05 → Reject H₀</strong></p>`;
+        } else if (test.type === 'group') {
+          const groupCount = Object.keys(
+            Object.fromEntries(
+              Object.entries(
+                data.reduce((g, r) => {
+                  const grp = r[test.group];
+                  if (grp !== null) g[grp] = (g[grp] || 0) + 1;
+                  return g;
+                }, {})
+              ).filter(([_, n]) => n >= 2)
+            )
+          ).length;
+          if (groupCount === 2) {
+            html += `
+              <h3>Two-Sample t-Test (Welch)</h3>
+              <p><strong>H₀:</strong> μ₁ = μ₂</p>
+              <p><strong>H₁:</strong> μ₁ ≠ μ₂</p>
+              <div class="formula">t = (x̄₁ - x̄₂) / √(s₁²/n₁ + s₂²/n₂)</div>
+              <p>No equal variance assumed.</p>
+              <p><strong>p < 0.05 → Reject H₀</strong></p>`;
+          } else {
+            html += `
+              <h3>One-Way ANOVA</h3>
+              <p><strong>H₀:</strong> All means equal</p>
+              <p><strong>H₁:</strong> At least one differs</p>
+              <div class="formula">F = MST / MSE</div>
+              <p>MST = between-group variance<br>MSE = within-group variance</p>
+              <p><strong>p < 0.05 → Reject H₀</strong></p>`;
+          }
+        } else if (test.type === 'gof') {
+          html += `
+            <h3>Chi-Square Goodness-of-Fit</h3>
+            <p><strong>H₀:</strong> Matches expected proportions</p>
+            <p><strong>H₁:</strong> Does not match</p>
+            <div class="formula">χ² = Σ (Oᵢ - Eᵢ)² / Eᵢ</div>
+            <p>df = k - 1</p>
+            <p><strong>p < 0.05 → Reject H₀</strong></p>`;
+        } else if (test.type === 'chi-ind') {
+          html += `
+            <h3>Chi-Square Independence</h3>
+            <p><strong>H₀:</strong> Variables independent</p>
+            <p><strong>H₁:</strong> Dependent</p>
+            <div class="formula">χ² = Σ (Oᵢⱼ - Eᵢⱼ)² / Eᵢⱼ</div>
+            <p>Eᵢⱼ = (Row × Col) / N</p>
+            <p>df = (r-1)(c-1)</p>
+            <p><strong>p < 0.05 → Reject H₀</strong></p>`;
+        }
+        content.innerHTML = html;
+      }
+
+      /* ---------------------------------------------------------- */
+      /* TEST IMPLEMENTATIONS -------------------------------------- */
+      /* ---------------------------------------------------------- */
+      function chiSquareGOF(col, data, div) {
+        const counts = {};
+        data.forEach(r => { const v = r[col]; counts[v] = (counts[v] || 0) + 1; });
+        const cats = Object.keys(counts).sort();
+        const n = data.length;
+        const def = cats.map(() => (1/cats.length).toFixed(4)).join(',');
+        const input = prompt(`Proportions (comma-separated):\n${cats.join(', ')}\nLeave blank for equal.`, def);
+        if (input === null) return;
+        let props = input.trim() ? input.split(',').map(parseFloat) : cats.map(() => 1/cats.length);
+        if (props.length !== cats.length || props.some(p => isNaN(p) || p < 0)) return alert('Invalid proportions.');
+        let sum = props.reduce((a,b) => a+b, 0);
+        if (Math.abs(sum - 1) > 1e-6 && !confirm(`Sum = ${sum.toFixed(4)} ≠ 1. Scale?`)) return;
+        if (sum !== 1) props = props.map(p => p/sum);
+        const exp = props.map(p => p * n);
+        let chi2 = 0;
+        cats.forEach((c,i) => { if (exp[i] > 0) chi2 += Math.pow(counts[c] - exp[i], 2) / exp[i]; });
+        const df = cats.length - 1;
+        const p = df > 0 ? 1 - jStat.chisquare.cdf(chi2, df) : NaN;
+        lastTest.exp = exp;
+       
+        let tbl = '<table><tr><th>Category</th><th>Obs</th><th>Exp</th></tr>';
+        cats.forEach((c,i) => tbl += `<tr><td>${c}</td><td>${counts[c]}</td><td>${exp[i].toFixed(2)}</td></tr>`);
+        tbl += '</table>';
+        div.innerHTML = `<div class="result">
+          <h3>Chi-Square Goodness-of-Fit (n=${n})</h3>${tbl}
+          <p><strong>χ² =</strong> ${chi2.toFixed(4)}, df=${df}, p=${isNaN(p) ? 'N/A' : p.toFixed(4)}</p>
+          <p class="${p<0.05?'error':'success'}">${p<0.05?'Reject H₀':'Fail to reject H₀'}</p>
+        </div>`;
+        showRationaleButton();
+        showPlotButton();
+      }
+
+      function oneSampleTTest(col, data, div) {
+        const nums = data.map(r => {
+          const val = parseFloat(r[col]);
+          return isNaN(val) ? null : val;
+        }).filter(v => v !== null);
+        
+        if (nums.length < 2) return div.innerHTML = '<p class="error">Need ≥2 valid numbers.</p>';
+        const mean = ss.mean(nums);
+        const sd = ss.standardDeviation(nums);
+        const n = nums.length;
+        const mu0 = prompt('Null mean (μ₀):', '0') || 0;
+        const t = (mean - mu0) / (sd / Math.sqrt(n));
+        const p = 2 * (1 - jStat.studentt.cdf(Math.abs(t), n-1));
+        div.innerHTML = `<div class="result">
+          <h3>One-Sample t-Test (n=${n})</h3>
+          <p>Mean = ${mean.toFixed(3)}, SD = ${sd.toFixed(3)}</p>
+          <p>H₀: μ = ${mu0}</p>
+          <p><strong>t =</strong> ${t.toFixed(4)}, <strong>p =</strong> ${p.toFixed(4)}</p>
+          <p class="${p<0.05?'error':'success'}">${p<0.05?'Reject H₀':'Fail to reject H₀'}</p>
+        </div>`;
+        showRationaleButton();
+        showPlotButton();
+      }
+
+      function chiSquareIndependence(c1, c2, data, div) {
+        const table = {};
+        data.forEach(r => {
+          const a = r[c1], b = r[c2];
           if (!table[a]) table[a] = {};
           table[a][b] = (table[a][b] || 0) + 1;
         });
@@ -383,300 +1112,107 @@
         const cols = new Set();
         rows.forEach(r => Object.keys(table[r]).forEach(c => cols.add(c)));
         const colNames = Array.from(cols);
-        const datasets = colNames.map((c, i) => ({
-          label: c,
-          data: rows.map(r => table[r][c] || 0),
-          backgroundColor: `hsl(${i * 360 / colNames.length}, 70%, 60%)`
-        }));
-
-        const canvas = document.createElement('canvas');
-        container.appendChild(canvas);
-        new Chart(canvas.getContext('2d'), {
-          type: 'bar',
-          data: { labels: rows, datasets },
-          options: {
-            responsive: true,
-            plugins: { title: { display: true, text: `${lastTest.col1} vs ${lastTest.col2}` } },
-            scales: { x: { stacked: true }, y: { stacked: true } }
+        const obs = rows.map(r => colNames.map(c => table[r][c] || 0));
+        const rowTot = obs.map(r => r.reduce((a,b) => a+b, 0));
+        const colTot = colNames.map((_,j) => obs.reduce((s,r) => s+r[j], 0));
+        const N = rowTot.reduce((a,b) => a+b, 0);
+        let chi2 = 0;
+        for (let i = 0; i < rows.length; i++) {
+          for (let j = 0; j < colNames.length; j++) {
+            const e = (rowTot[i] * colTot[j]) / N;
+            if (e > 0) chi2 += Math.pow(obs[i][j] - e, 2) / e;
           }
-        });
-        return;
-      }
-
-      /* ---------- GROUP COMPARISON (t-test / ANOVA) ---------- */
-      if (lastTest.type === 'group') {
-        const groups = {};
-        complete.forEach(r => {
-          const g = r[lastTest.group];
-          const q = parseFloat(r[lastTest.quant]);
-          if (!groups[g]) groups[g] = [];
-          groups[g].push(q);
-        });
-        const labels = Object.keys(groups);
-        const means = labels.map(g => ss.mean(groups[g]));
-
-        const canvas = document.createElement('canvas');
-        container.appendChild(canvas);
-        new Chart(canvas.getContext('2d'), {
-          type: 'bar',
-          data: {
-            labels,
-            datasets: [{ label: 'Mean', data: means, backgroundColor: 'rgba(54,162,235,0.6)' }]
-          },
-          options: {
-            responsive: true,
-            plugins: {
-              title: { display: true, text: `${lastTest.quant} by ${lastTest.group}` }
-              // **NO ANNOTATION → NO ERROR BARS**
-            }
-          }
-        });
-        return;
-      }
-    }
-
-    /* ---------------------------------------------------------- */
-    /* RATIONALE MODAL ------------------------------------------- */
-    /* ---------------------------------------------------------- */
-    function openRationale() {
-      if (!lastTest) return;
-      updateRationale(lastTest);
-      document.getElementById('rationaleModal').style.display = 'flex';
-    }
-
-    function closeRationale() {
-      document.getElementById('rationaleModal').style.display = 'none';
-    }
-
-    function updateRationale(test) {
-      const content = document.getElementById('rationaleContent');
-      let html = '<h3>Method Explanation</h3>';
-
-      if (test.type === 'one-sample-t') {
-        html += `
-          <h3>One-Sample t-Test</h3>
-          <p><strong>H₀:</strong> μ = μ₀ (user-defined)</p>
-          <p><strong>H₁:</strong> μ ≠ μ₀</p>
-          <div class="formula">t = (x̄ - μ₀) / (s / √n)</div>
-          <p>df = n - 1</p>
-          <p><strong>p < 0.05 → Reject H₀</strong>: mean differs from μ₀.</p>`;
-      } else if (test.type === 'group') {
-        const groupCount = Object.keys(
-          Object.fromEntries(
-            Object.entries(
-              data.reduce((g, r) => {
-                const grp = r[test.group];
-                if (grp !== null) g[grp] = (g[grp] || 0) + 1;
-                return g;
-              }, {})
-            ).filter(([_, n]) => n >= 2)
-          )
-        ).length;
-        if (groupCount === 2) {
-          html += `
-            <h3>Two-Sample t-Test (Welch)</h3>
-            <p><strong>H₀:</strong> μ₁ = μ₂</p>
-            <p><strong>H₁:</strong> μ₁ ≠ μ₂</p>
-            <div class="formula">t = (x̄₁ - x̄₂) / √(s₁²/n₁ + s₂²/n₂)</div>
-            <p>No equal variance assumed.</p>
-            <p><strong>p < 0.05 → Reject H₀</strong>: groups differ.</p>`;
-        } else {
-          html += `
-            <h3>One-Way ANOVA</h3>
-            <p><strong>H₀:</strong> All means equal</p>
-            <p><strong>H₁:</strong> At least one differs</p>
-            <div class="formula">F = MST / MSE</div>
-            <p>MST = between-group variance<br>MSE = within-group variance</p>
-            <p><strong>p < 0.05 → Reject H₀</strong>: not all means equal.</p>`;
         }
-      } else if (test.type === 'gof') {
-        html += `
-          <h3>Chi-Square Goodness-of-Fit</h3>
-          <p><strong>H₀:</strong> Matches expected proportions</p>
-          <p><strong>H₁:</strong> Does not match</p>
-          <div class="formula">χ² = Σ (Oᵢ - Eᵢ)² / Eᵢ</div>
-          <p>df = k - 1</p>
-          <p><strong>p < 0.05 → Reject H₀</strong>: poor fit.</p>`;
-      } else if (test.type === 'chi-ind') {
-        html += `
-          <h3>Chi-Square Independence</h3>
-          <p><strong>H₀:</strong> Variables independent</p>
-          <p><strong>H₁:</strong> Dependent</p>
-          <div class="formula">χ² = Σ (Oᵢⱼ - Eᵢⱼ)² / Eᵢⱼ</div>
-          <p>Eᵢⱼ = (Row × Col) / N</p>
-          <p>df = (r-1)(c-1)</p>
-          <p><strong>p < 0.05 → Reject H₀</strong>: association exists.</p>`;
-      }
-      content.innerHTML = html;
-    }
-
-    /* ---------------------------------------------------------- */
-    /* TEST IMPLEMENTATIONS -------------------------------------- */
-    /* ---------------------------------------------------------- */
-    function chiSquareGOF(col, data, div) {
-      const counts = {};
-      data.forEach(r => { const v = r[col]; counts[v] = (counts[v] || 0) + 1; });
-      const cats = Object.keys(counts).sort();
-      const n = data.length;
-      const def = cats.map(() => (1/cats.length).toFixed(4)).join(',');
-      const input = prompt(`Proportions (comma-separated):\n${cats.join(', ')}\nLeave blank for equal.`, def);
-      if (input === null) return;
-      let props = input.trim() ? input.split(',').map(parseFloat) : cats.map(() => 1/cats.length);
-      if (props.length !== cats.length || props.some(p => isNaN(p) || p < 0)) return alert('Invalid proportions.');
-      let sum = props.reduce((a,b) => a+b, 0);
-      if (Math.abs(sum - 1) > 1e-6 && !confirm(`Sum = ${sum.toFixed(4)} ≠ 1. Scale?`)) return;
-      if (sum !== 1) props = props.map(p => p/sum);
-      const exp = props.map(p => p * n);
-      let chi2 = 0;
-      cats.forEach((c,i) => { if (exp[i] > 0) chi2 += Math.pow(counts[c] - exp[i], 2) / exp[i]; });
-      const df = cats.length - 1;
-      const p = df > 0 ? 1 - jStat.chisquare.cdf(chi2, df) : NaN;
-      lastTest.exp = exp;
-
-      let tbl = '<table><tr><th>Category</th><th>Obs</th><th>Exp</th></tr>';
-      cats.forEach((c,i) => tbl += `<tr><td>${c}</td><td>${counts[c]}</td><td>${exp[i].toFixed(2)}</td></tr>`);
-      tbl += '</table>';
-      div.innerHTML = `<div class="result">
-        <h3>Chi-Square Goodness-of-Fit (n=${n})</h3>${tbl}
-        <p><strong>χ² =</strong> ${chi2.toFixed(4)}, df=${df}, p=${isNaN(p) ? 'N/A' : p.toFixed(4)}</p>
-        <p class="${p<0.05?'error':'success'}">${p<0.05?'Reject H₀':'Fail to reject H₀'}</p>
-      </div>`;
-      showRationaleButton();
-      showPlotButton();
-    }
-
-    function oneSampleTTest(col, data, div) {
-      const nums = data.map(r => parseFloat(r[col])).filter(v => !isNaN(v));
-      if (nums.length < 2) return div.innerHTML = '<p class="error">Need ≥2 valid numbers.</p>';
-      const mean = ss.mean(nums);
-      const sd = ss.standardDeviation(nums);
-      const n = nums.length;
-      const mu0 = prompt('Null mean (μ₀):', '0') || 0;
-      const t = (mean - mu0) / (sd / Math.sqrt(n));
-      const p = 2 * (1 - jStat.studentt.cdf(Math.abs(t), n-1));
-      div.innerHTML = `<div class="result">
-        <h3>One-Sample t-Test (n=${n})</h3>
-        <p>Mean = ${mean.toFixed(3)}, SD = ${sd.toFixed(3)}</p>
-        <p>H₀: μ = ${mu0}</p>
-        <p><strong>t =</strong> ${t.toFixed(4)}, <strong>p =</strong> ${p.toFixed(4)}</p>
-        <p class="${p<0.05?'error':'success'}">${p<0.05?'Reject H₀':'Fail to reject H₀'}</p>
-      </div>`;
-      showRationaleButton();
-      showPlotButton();
-    }
-
-    function chiSquareIndependence(c1, c2, data, div) {
-      const table = {};
-      data.forEach(r => {
-        const a = r[c1], b = r[c2];
-        if (!table[a]) table[a] = {};
-        table[a][b] = (table[a][b] || 0) + 1;
-      });
-      const rows = Object.keys(table);
-      const cols = new Set();
-      rows.forEach(r => Object.keys(table[r]).forEach(c => cols.add(c)));
-      const colNames = Array.from(cols);
-      const obs = rows.map(r => colNames.map(c => table[r][c] || 0));
-      const rowTot = obs.map(r => r.reduce((a,b) => a+b, 0));
-      const colTot = colNames.map((_,j) => obs.reduce((s,r) => s+r[j], 0));
-      const N = rowTot.reduce((a,b) => a+b, 0);
-      let chi2 = 0;
-      for (let i = 0; i < rows.length; i++) {
-        for (let j = 0; j < colNames.length; j++) {
-          const e = (rowTot[i] * colTot[j]) / N;
-          if (e > 0) chi2 += Math.pow(obs[i][j] - e, 2) / e;
-        }
-      }
-      const df = (rows.length - 1) * (colNames.length - 1);
-      const p = 1 - jStat.chisquare.cdf(chi2, df);
-      let cont = '<table><tr><th></th>' + colNames.map(c => `<th>${c}</th>`).join('') + '</tr>';
-      rows.forEach((r,i) => cont += `<tr><td><strong>${r}</strong></td>` + obs[i].map(v => `<td>${v}</td>`).join('') + '</tr>');
-      cont += '</table>';
-      div.innerHTML = `<div class="result">
-        <h3>Chi-Square Independence (n=${N})</h3>
-        <p><strong>Contingency Table:</strong></p>${cont}
-        <p><strong>χ² =</strong> ${chi2.toFixed(4)}, df=${df}, p=${p.toFixed(4)}</p>
-        <p class="${p<0.05?'error':'success'}">${p<0.05?'Reject H₀: Independent.':'Fail to reject H₀: Independent.'}</p>
-      </div>`;
-      showRationaleButton();
-      showPlotButton();
-    }
-
-    function groupComparison(quant, group, data, div) {
-      const groups = {};
-      data.forEach(r => {
-        const g = r[group];
-        const q = parseFloat(r[quant]);
-        if (g !== null && !isNaN(q)) {
-          if (!groups[g]) groups[g] = [];
-          groups[g].push(q);
-        }
-      });
-      const validGroups = Object.fromEntries(
-        Object.entries(groups).filter(([_, vals]) => vals.length >= 2)
-      );
-      const list = Object.keys(validGroups);
-      if (list.length < 2) {
+        const df = (rows.length - 1) * (colNames.length - 1);
+        const p = 1 - jStat.chisquare.cdf(chi2, df);
+        let cont = '<table><tr><th></th>' + colNames.map(c => `<th>${c}</th>`).join('') + '</tr>';
+        rows.forEach((r,i) => cont += `<tr><td><strong>${r}</strong></td>` + obs[i].map(v => `<td>${v}</td>`).join('') + '</tr>');
+        cont += '</table>';
         div.innerHTML = `<div class="result">
-          <h3>Group Comparison</h3>
-          <p class="error">Need ≥2 groups with n ≥ 2 each.</p>
-          <p>Available after filtering:</p>
-          ${Object.entries(groups).map(([g, v]) => `<p><strong>${g}:</strong> n=${v.length}</p>`).join('')}
+          <h3>Chi-Square Independence (n=${N})</h3>
+          <p><strong>Contingency Table:</strong></p>${cont}
+          <p><strong>χ² =</strong> ${chi2.toFixed(4)}, df=${df}, p=${p.toFixed(4)}</p>
+          <p class="${p<0.05?'error':'success'}">${p<0.05?'Reject H₀':'Fail to reject H₀'}</p>
         </div>`;
-        lastTest = null;
-        hidePlot();
-        return;
+        showRationaleButton();
+        showPlotButton();
       }
 
-      const means = list.map(g => ss.mean(validGroups[g]));
-      const sds = list.map(g => ss.standardDeviation(validGroups[g]));
-      const ns = list.map(g => validGroups[g].length);
-      let html = `<h3>${list.length === 2 ? 't-Test (Welch)' : 'One-Way ANOVA'}</h3>`;
-      list.forEach((g,i) => html += `<p><strong>${g}:</strong> n=${ns[i]}, mean=${means[i].toFixed(3)}, sd=${sds[i].toFixed(3)}</p>`);
-
-      if (list.length === 2) {
-        const t = ss.tTestTwoSample(validGroups[list[0]], validGroups[list[1]]);
-        const p = t === null ? NaN : t;
-        if (isNaN(p)) {
-          html += '<p class="error">t-test failed (check variance or sample size).</p>';
-        } else {
-          html += `<p><strong>t =</strong> ${t.toFixed(4)}, <strong>p =</strong> ${p.toFixed(4)}</p>`;
-          html += `<p class="${p<0.05?'error':'success'}">${p<0.05?'Reject H₀: Means differ.':'Fail to reject H₀'}</p>`;
-        }
-      } else {
-        try {
-          const k = list.length;
-          const N = ns.reduce((a,b)=>a+b,0);
-          const grandMean = means.reduce((s,m,i)=>s + m*ns[i],0) / N;
-
-          let SSb = 0;
-          for (let i=0;i<k;i++) SSb += ns[i] * Math.pow(means[i] - grandMean,2);
-
-          let SSw = 0;
-          for (let i=0;i<k;i++) {
-            const vals = validGroups[list[i]];
-            const m = means[i];
-            for (let v of vals) SSw += Math.pow(v-m,2);
+      function groupComparison(quant, group, data, div) {
+        const groups = {};
+        data.forEach(r => {
+          const g = r[group];
+          const q = parseFloat(r[quant]);
+          if (g !== null && !isNaN(q)) {
+            if (!groups[g]) groups[g] = [];
+            groups[g].push(q);
           }
-
-          const dfb = k-1;
-          const dfw = N-k;
-          const MSb = SSb / dfb;
-          const MSw = SSw / dfw;
-          const F = MSb / MSw;
-          const p = 1 - jStat.centralF.cdf(F, dfb, dfw);
-
-          html += `<p><strong>F =</strong> ${F.toFixed(4)}, df = (${dfb}, ${dfw}), <strong>p =</strong> ${p.toFixed(4)}</p>`;
-          html += `<p class="${p<0.05?'error':'success'}">${p<0.05?'Reject H₀: At least one mean differs.':'Fail to reject H₀'}</p>`;
-        } catch (e) {
-          html += '<p class="error">ANOVA error: ' + e.message + '</p>';
+        });
+        const validGroups = Object.fromEntries(
+          Object.entries(groups).filter(([_, vals]) => vals.length >= 2)
+        );
+        const list = Object.keys(validGroups);
+        if (list.length < 2) {
+          div.innerHTML = `<div class="result">
+            <h3>Group Comparison</h3>
+            <p class="error">Need ≥2 groups with n ≥ 2 each.</p>
+            <p>Available after filtering:</p>
+            ${Object.entries(groups).map(([g, v]) => `<p><strong>${g}:</strong> n=${v.length}</p>`).join('')}
+          </div>`;
+          lastTest = null;
+          hidePlot();
+          return;
         }
+       
+        const means = list.map(g => ss.mean(validGroups[g]));
+        const sds = list.map(g => ss.standardDeviation(validGroups[g]));
+        const ns = list.map(g => validGroups[g].length);
+        let html = `<h3>${list.length === 2 ? 't-Test (Welch)' : 'One-Way ANOVA'}</h3>`;
+        list.forEach((g,i) => html += `<p><strong>${g}:</strong> n=${ns[i]}, mean=${means[i].toFixed(3)}, sd=${sds[i].toFixed(3)}</p>`);
+       
+        if (list.length === 2) {
+          const t = ss.tTestTwoSample(validGroups[list[0]], validGroups[list[1]]);
+          const p = t === null ? NaN : t;
+          if (isNaN(p)) {
+            html += '<p class="error">t-test failed (check variance or sample size).</p>';
+          } else {
+            html += `<p><strong>t =</strong> ${t.toFixed(4)}, <strong>p =</strong> ${p.toFixed(4)}</p>`;
+            html += `<p class="${p<0.05?'error':'success'}">${p<0.05?'Reject H₀':'Fail to reject H₀'}</p>`;
+          }
+        } else {
+          try {
+            const k = list.length;
+            const N = ns.reduce((a,b)=>a+b,0);
+            const grandMean = means.reduce((s,m,i)=>s + m*ns[i],0) / N;
+           
+            let SSb = 0;
+            for (let i=0;i<k;i++) SSb += ns[i] * Math.pow(means[i] - grandMean,2);
+           
+            let SSw = 0;
+            for (let i=0;i<k;i++) {
+              const vals = validGroups[list[i]];
+              const m = means[i];
+              for (let v of vals) SSw += Math.pow(v-m,2);
+            }
+           
+            const dfb = k-1;
+            const dfw = N-k;
+            const MSb = SSb / dfb;
+            const MSw = SSw / dfw;
+            const F = MSb / MSw;
+            const p = 1 - jStat.centralF.cdf(F, dfb, dfw);
+           
+            html += `<p><strong>F =</strong> ${F.toFixed(4)}, df = (${dfb}, ${dfw}), <strong>p =</strong> ${p.toFixed(4)}</p>`;
+            html += `<p class="${p<0.05?'error':'success'}">${p<0.05?'Reject H₀':'Fail to reject H₀'}</p>`;
+          } catch (e) {
+            html += '<p class="error">ANOVA error: ' + e.message + '</p>';
+          }
+        }
+       
+        div.innerHTML = `<div class="result">${html}</div>`;
+        showRationaleButton();
+        showPlotButton();
       }
-
-      div.innerHTML = `<div class="result">${html}</div>`;
-      showRationaleButton();
-      showPlotButton();
-    }
-  </script>
-</body>
+    </script>
+  </body>
 </html>
