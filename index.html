@@ -596,7 +596,7 @@
         <h3>Chi-Square Independence (n=${N})</h3>
         <p><strong>Contingency Table:</strong></p>${cont}
         <p><strong>χ² =</strong> ${chi2.toFixed(4)}, df=${df}, p=${p.toFixed(4)}</p>
-        <p class="${p<0.05?'error':'success'}">${p<0.05?'Reject H₀: Dependent.':'Fail to reject H₀: Independent.'}</p>
+        <p class="${p<0.05?'error':'success'}">${p<0.05?'Reject H₀: Independent.':'Fail to reject H₀: Independent.'}</p>
       </div>`;
       showRationaleButton();
       showPlotButton();
