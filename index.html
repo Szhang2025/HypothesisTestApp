@@ -524,7 +524,7 @@
         container.appendChild(canvas);
       }
 
-      function drawContingencyTablePlot(col1, col2, data, container, title) {
+      function drawSideBySideBarPlot(col1, col2, data, container, title) {
         if (!data || data.length === 0) return;
         
         const canvas = document.createElement('canvas');
@@ -533,7 +533,7 @@
         canvas.height = 400;
         const ctx = canvas.getContext('2d');
         
-        // Build contingency table
+        // Build cross-tabulation
         const table = {};
         const col1Values = new Set();
         const col2Values = new Set();
@@ -554,19 +554,21 @@
         
         if (rowLabels.length === 0 || colLabels.length === 0) return;
         
-        // Calculate frequencies
-        const frequencies = rowLabels.map(row => 
-          colLabels.map(col => table[row]?.[col] || 0)
-        );
-        
-        const maxFreq = Math.max(...frequencies.flat());
-        
         // Setup drawing area
         const padding = 80;
         const graphWidth = canvas.width - 2 * padding;
         const graphHeight = canvas.height - 2 * padding;
-        const cellWidth = graphWidth / colLabels.length;
-        const cellHeight = graphHeight / rowLabels.length;
+        
+        // Calculate maximum frequency for scaling
+        let maxFreq = 0;
+        rowLabels.forEach(row => {
+          colLabels.forEach(col => {
+            maxFreq = Math.max(maxFreq, table[row]?.[col] || 0);
+          });
+        });
+        
+        const groupWidth = graphWidth / rowLabels.length;
+        const barWidth = groupWidth / (colLabels.length + 1); // +1 for spacing
         
         // Clear canvas
         ctx.fillStyle = 'white';
@@ -578,52 +580,56 @@
         ctx.textAlign = 'center';
         ctx.fillText(title, canvas.width / 2, 20);
         
-        // Draw heatmap cells
+        // Draw bars
+        const colors = ['rgba(255, 99, 132, 0.6)', 'rgba(54, 162, 235, 0.6)', 'rgba(255, 205, 86, 0.6)', 
+                       'rgba(75, 192, 192, 0.6)', 'rgba(153, 102, 255, 0.6)'];
+        
         rowLabels.forEach((rowLabel, rowIndex) => {
           colLabels.forEach((colLabel, colIndex) => {
-            const freq = frequencies[rowIndex][colIndex];
-            const intensity = maxFreq > 0 ? (freq / maxFreq) * 0.8 + 0.2 : 0.2;
+            const freq = table[rowLabel]?.[colLabel] || 0;
+            const barHeight = (freq / maxFreq) * graphHeight;
             
-            const x = padding + colIndex * cellWidth;
-            const y = padding + rowIndex * cellHeight;
+            const x = padding + rowIndex * groupWidth + colIndex * barWidth;
+            const y = canvas.height - padding - barHeight;
             
-            // Draw cell with color intensity based on frequency
-            ctx.fillStyle = `rgba(54, 162, 235, ${intensity})`;
-            ctx.fillRect(x, y, cellWidth, cellHeight);
-            ctx.strokeStyle = 'rgba(255, 255, 255, 0.8)';
-            ctx.strokeRect(x, y, cellWidth, cellHeight);
+            // Draw bar
+            ctx.fillStyle = colors[colIndex % colors.length];
+            ctx.fillRect(x, y, barWidth - 2, barHeight);
+            ctx.strokeStyle = colors[colIndex % colors.length].replace('0.6', '1');
+            ctx.strokeRect(x, y, barWidth - 2, barHeight);
             
-            // Draw frequency number
-            if (freq > 0) {
-              ctx.fillStyle = freq > maxFreq * 0.5 ? 'white' : 'black';
-              ctx.font = '12px Arial';
+            // Draw frequency label if there's space
+            if (freq > 0 && barHeight > 15) {
+              ctx.fillStyle = 'black';
+              ctx.font = '10px Arial';
               ctx.textAlign = 'center';
-              ctx.textBaseline = 'middle';
-              ctx.fillText(
-                freq.toString(), 
-                x + cellWidth / 2, 
-                y + cellHeight / 2
-              );
+              ctx.fillText(freq.toString(), x + barWidth / 2, y - 5);
             }
           });
         });
         
-        // Draw row labels (left side)
+        // Draw row labels (x-axis)
         ctx.fillStyle = 'black';
         ctx.font = '12px Arial';
-        ctx.textAlign = 'right';
-        ctx.textBaseline = 'middle';
+        ctx.textAlign = 'center';
         rowLabels.forEach((label, i) => {
-          const y = padding + i * cellHeight + cellHeight / 2;
-          ctx.fillText(label, padding - 10, y);
+          const x = padding + i * groupWidth + groupWidth / 2;
+          ctx.fillText(label, x, canvas.height - padding + 20);
         });
         
-        // Draw column labels (top)
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'bottom';
+        // Draw column labels (legend)
+        ctx.textAlign = 'left';
         colLabels.forEach((label, i) => {
-          const x = padding + i * cellWidth + cellWidth / 2;
-          ctx.fillText(label, x, padding - 10);
+          const x = padding + 10;
+          const y = 40 + i * 20;
+          
+          ctx.fillStyle = colors[i % colors.length];
+          ctx.fillRect(x, y, 15, 15);
+          ctx.strokeStyle = colors[i % colors.length].replace('0.6', '1');
+          ctx.strokeRect(x, y, 15, 15);
+          
+          ctx.fillStyle = 'black';
+          ctx.fillText(`${col2}: ${label}`, x + 20, y + 12);
         });
         
         // Draw axis titles
@@ -631,16 +637,10 @@
         ctx.save();
         ctx.translate(20, canvas.height / 2);
         ctx.rotate(-Math.PI / 2);
-        ctx.fillText(col1, 0, 0);
+        ctx.fillText('Frequency', 0, 0);
         ctx.restore();
         
-        ctx.fillText(col2, canvas.width / 2, canvas.height - 10);
-        
-        // Draw legend
-        ctx.fillStyle = 'black';
-        ctx.font = '12px Arial';
-        ctx.textAlign = 'left';
-        ctx.fillText('Frequency Heatmap (darker = higher frequency)', padding, 40);
+        ctx.fillText(col1, canvas.width / 2, canvas.height - 10);
         
         container.appendChild(canvas);
       }
@@ -887,11 +887,11 @@
           
           const title = document.createElement('div');
           title.className = 'plot-title';
-          title.textContent = `Contingency Table: ${lastTest.col1} vs ${lastTest.col2}`;
+          title.textContent = `Side-by-side Bar Plot: ${lastTest.col1} vs ${lastTest.col2}`;
           plotDiv.appendChild(title);
           
-          drawContingencyTablePlot(lastTest.col1, lastTest.col2, complete, plotDiv, 
-                                 `Contingency Table: ${lastTest.col1} vs ${lastTest.col2}`);
+          drawSideBySideBarPlot(lastTest.col1, lastTest.col2, complete, plotDiv, 
+                               `Side-by-side Bar Plot: ${lastTest.col1} vs ${lastTest.col2}`);
           
           container.appendChild(plotDiv);
           return;
@@ -991,7 +991,7 @@
             <p><strong>H₁:</strong> μ ≠ μ₀</p>
             <div class="formula">t = (x̄ - μ₀) / (s / √n)</div>
             <p>df = n - 1</p>
-            <p><strong>p < 0.05 → Reject H₀</strong></p>`;
+            <p><strong>p < 0.05 → Reject H₀</strong>: mean differs from μ₀.</p>`;
         } else if (test.type === 'group') {
           const groupCount = Object.keys(
             Object.fromEntries(
@@ -1011,7 +1011,7 @@
               <p><strong>H₁:</strong> μ₁ ≠ μ₂</p>
               <div class="formula">t = (x̄₁ - x̄₂) / √(s₁²/n₁ + s₂²/n₂)</div>
               <p>No equal variance assumed.</p>
-              <p><strong>p < 0.05 → Reject H₀</strong></p>`;
+              <p><strong>p < 0.05 → Reject H₀</strong>: groups differ.</p>`;
           } else {
             html += `
               <h3>One-Way ANOVA</h3>
@@ -1019,7 +1019,7 @@
               <p><strong>H₁:</strong> At least one differs</p>
               <div class="formula">F = MST / MSE</div>
               <p>MST = between-group variance<br>MSE = within-group variance</p>
-              <p><strong>p < 0.05 → Reject H₀</strong></p>`;
+              <p><strong>p < 0.05 → Reject H₀</strong>: not all means equal.</p>`;
           }
         } else if (test.type === 'gof') {
           html += `
@@ -1028,7 +1028,7 @@
             <p><strong>H₁:</strong> Does not match</p>
             <div class="formula">χ² = Σ (Oᵢ - Eᵢ)² / Eᵢ</div>
             <p>df = k - 1</p>
-            <p><strong>p < 0.05 → Reject H₀</strong></p>`;
+            <p><strong>p < 0.05 → Reject H₀</strong>: poor fit.</p>`;
         } else if (test.type === 'chi-ind') {
           html += `
             <h3>Chi-Square Independence</h3>
@@ -1037,7 +1037,7 @@
             <div class="formula">χ² = Σ (Oᵢⱼ - Eᵢⱼ)² / Eᵢⱼ</div>
             <p>Eᵢⱼ = (Row × Col) / N</p>
             <p>df = (r-1)(c-1)</p>
-            <p><strong>p < 0.05 → Reject H₀</strong></p>`;
+            <p><strong>p < 0.05 → Reject H₀</strong>: association exists.</p>`;
         }
         content.innerHTML = html;
       }
@@ -1132,7 +1132,7 @@
           <h3>Chi-Square Independence (n=${N})</h3>
           <p><strong>Contingency Table:</strong></p>${cont}
           <p><strong>χ² =</strong> ${chi2.toFixed(4)}, df=${df}, p=${p.toFixed(4)}</p>
-          <p class="${p<0.05?'error':'success'}">${p<0.05?'Reject H₀':'Fail to reject H₀'}</p>
+          <p class="${p<0.05?'error':'success'}">${p<0.05?'Reject H₀: Independent.':'Fail to reject H₀: Independent.'}</p>
         </div>`;
         showRationaleButton();
         showPlotButton();
@@ -1171,13 +1171,32 @@
         list.forEach((g,i) => html += `<p><strong>${g}:</strong> n=${ns[i]}, mean=${means[i].toFixed(3)}, sd=${sds[i].toFixed(3)}</p>`);
        
         if (list.length === 2) {
-          const t = ss.tTestTwoSample(validGroups[list[0]], validGroups[list[1]]);
-          const p = t === null ? NaN : t;
+          // Proper Welch t-test calculation
+          const group1 = validGroups[list[0]];
+          const group2 = validGroups[list[1]];
+          
+          const mean1 = means[0];
+          const mean2 = means[1];
+          const var1 = Math.pow(sds[0], 2);
+          const var2 = Math.pow(sds[1], 2);
+          const n1 = ns[0];
+          const n2 = ns[1];
+          
+          // Welch's t-statistic
+          const t = (mean1 - mean2) / Math.sqrt(var1/n1 + var2/n2);
+          
+          // Welch-Satterthwaite degrees of freedom
+          const df = Math.pow(var1/n1 + var2/n2, 2) / 
+                    (Math.pow(var1/n1, 2)/(n1-1) + Math.pow(var2/n2, 2)/(n2-1));
+          
+          // Two-tailed p-value
+          const p = 2 * (1 - jStat.studentt.cdf(Math.abs(t), df));
+          
           if (isNaN(p)) {
             html += '<p class="error">t-test failed (check variance or sample size).</p>';
           } else {
-            html += `<p><strong>t =</strong> ${t.toFixed(4)}, <strong>p =</strong> ${p.toFixed(4)}</p>`;
-            html += `<p class="${p<0.05?'error':'success'}">${p<0.05?'Reject H₀':'Fail to reject H₀'}</p>`;
+            html += `<p><strong>t =</strong> ${t.toFixed(4)}, <strong>df =</strong> ${df.toFixed(2)}, <strong>p =</strong> ${p.toFixed(4)}</p>`;
+            html += `<p class="${p<0.05?'error':'success'}">${p<0.05?'Reject H₀: Means differ.':'Fail to reject H₀'}</p>`;
           }
         } else {
           try {
@@ -1203,7 +1222,7 @@
             const p = 1 - jStat.centralF.cdf(F, dfb, dfw);
            
             html += `<p><strong>F =</strong> ${F.toFixed(4)}, df = (${dfb}, ${dfw}), <strong>p =</strong> ${p.toFixed(4)}</p>`;
-            html += `<p class="${p<0.05?'error':'success'}">${p<0.05?'Reject H₀':'Fail to reject H₀'}</p>`;
+            html += `<p class="${p<0.05?'error':'success'}">${p<0.05?'Reject H₀: At least one mean differs.':'Fail to reject H₀'}</p>`;
           } catch (e) {
             html += '<p class="error">ANOVA error: ' + e.message + '</p>';
           }
